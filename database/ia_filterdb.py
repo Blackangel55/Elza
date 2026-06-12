@@ -258,6 +258,11 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
     query_no_special = SPACES_PATTERN.sub(' ', query_no_special).strip()
     if query_no_special and query_no_special not in search_queries:
         search_queries.append(query_no_special)
+    query_without_year = re.sub(r'[()[\]{}]', '', original_query) # Remove brackets
+    query_without_year = re.sub(r'\b(19|20)\d{2}\b', '', query_without_year) # Remove years 1900-2099
+    query_without_year = SPACES_PATTERN.sub(' ', query_without_year).strip()
+    if query_without_year and query_without_year not in search_queries:
+        search_queries.append(query_without_year)
 
     files = []
     total_results = 0
