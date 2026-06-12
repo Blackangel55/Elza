@@ -66,7 +66,7 @@ SPECIAL_CHARS_LIST = [
 SPECIAL_CHARS_PATTERN = re.compile('[' + ''.join(re.escape(c) for c in SPECIAL_CHARS_LIST) + ']+')
 
 KEYWORDS_PATTERN = re.compile(
-    r'\b(' + '|'.join(re.escape(keyword) for keyword in ['_', 'MoviiWrld', 'Smile_Upload', 'Smile']) + r')\b',
+    r'\b(' + '|'.join(re.escape(keyword) for keyword in ['_', 'MoviiWrld', 'Smile_Upload', 'XDMovies', '4kHdHub', 'HDHub4u']) + r')\b',
     flags=re.IGNORECASE
 )
 SPACES_PATTERN = re.compile(r'\s+')
