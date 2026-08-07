@@ -213,17 +213,24 @@ async def get_poster(query, bulk=False, id=False, file=None):
         media_id = first_result["id"]
         media_type = first_result["_type"]
     else:
-        # If ID is provided (could be TMDB or IMDB ID)
+        # If ID is provided (could be TMDB, IMDB ID, or new tmdb_id_type format)
         if str(query).startswith("tt"):
             # It's an IMDB ID, convert to TMDB
             result = await tmdb_get_by_imdb_id(query)
             if not result:
                 return None
             media_id, media_type = result
+        elif str(query).startswith("tmdb_"):
+            # It's a TMDB ID passed from spell check callback (Format: tmdb_12345_movie)
+            parts = query.split("_")
+            media_id = int(parts[1])
+            media_type = parts[2] if len(parts) > 2 else "movie"
         else:
-            # Assume it's a TMDB ID
-            media_id = query
-            # Default to movie, could be enhanced
+            # Fallback: Assume it's a raw TMDB ID
+            try:
+                media_id = int(query)
+            except:
+                return None
             media_type = "movie"
     
     # Get detailed info
