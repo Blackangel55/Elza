@@ -6,11 +6,10 @@ marshmallow==3.26.1
 umongo
 requests
 bs4
-git+https://github.com/cinemagoer/cinemagoer
+aiohttp
 shortzy
 datetime
 pytz
-aiohttp
 opencv-python-headless==4.8.1.78
 python-dotenv==0.21.1
 speedtest
@@ -28,4 +27,3 @@ ffmpeg-python==0.2.0
 jinja2
 fuzzywuzzy
 python-Levenshtein==0.21.0
-
