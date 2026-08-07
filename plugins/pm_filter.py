@@ -715,7 +715,12 @@ async def advantage_spoll_choker(bot, query):
     _, id, user = query.data.split('#')
     if int(user) != 0 and query.from_user.id != int(user):
         return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
+    
+    # Handles both old IMDB IDs (tt...) and new TMDB IDs (tmdb_...)
     movies = await get_poster(id, id=True)
+    if not movies:
+        return await query.answer("❌ Could not fetch movie data!", show_alert=True)
+        
     movie = movies.get('title')
     movie = re.sub(r"[:-]", " ", movie)
     movie = re.sub(r"\s+", " ", movie).strip()
@@ -2098,9 +2103,14 @@ async def auto_filter(client, msg, spoll=False):
 
 async def ai_spell_check(chat_id, wrong_name):
     async def search_movie(wrong_name):
-        search_results = imdb.search_movie(wrong_name)
-        movie_list = [movie['title'] for movie in search_results]
+        # Using TMDB instead of IMDB
+        search_results = await tmdb_search(wrong_name)
+        if not search_results:
+            return []
+        # TMDB returns 'title' for movies and 'name' for TV shows
+        movie_list = [movie.get('title') or movie.get('name') for movie in search_results]
         return movie_list
+        
     movie_list = await search_movie(wrong_name)
     if not movie_list:
         return
@@ -2112,7 +2122,8 @@ async def ai_spell_check(chat_id, wrong_name):
         files, offset, total_results = await get_search_results(chat_id=chat_id, query=movie)
         if files:
             return movie
-        movie_list.remove(movie)
+        if movie in movie_list:
+            movie_list.remove(movie)
 
 async def advantage_spell_chok(client, message):
     mv_id = message.id
@@ -2123,9 +2134,12 @@ async def advantage_spell_chok(client, message):
         r"\b(pl(i|e)*?(s|z+|ease|se|ese|(e+)s(e)?)|((send|snd|giv(e)?|gib)(\sme)?)|movie(s)?|movie|new|latest|br((o|u)h?)*|^h(e|a)?(l)*(o)*|mal(ayalam)?|t(h)?amil|file|that|find|und(o)*|kit(t(i|y)?)?o(w)?|thar(u)?(o)*w?|kittum(o)*|aya(k)*(um(o)*)?|full\smovie|any(one)|with\ssubtitle(s)?)",
         "", message.text, flags=re.IGNORECASE)
     query = query.strip() + " movie"
+    
     try:
-        movies = await get_poster(search, bulk=True)
-    except:
+        # Using TMDB search instead of IMDB bulk search
+        movies = await tmdb_search(query)
+    except Exception as e:
+        print(f"Spell check error: {e}")
         k = await message.reply(script.I_CUDNT.format(message.from_user.mention))
         await asyncio.sleep(60)
         await k.delete()
@@ -2134,12 +2148,13 @@ async def advantage_spell_chok(client, message):
         except:
             pass
         return
+        
     if not movies:
         google = search.replace(" ", "+")
         button = [[
             InlineKeyboardButton("🔍 ᴄʜᴇᴄᴋ sᴘᴇʟʟɪɴɢ ᴏɴ ɢᴏᴏɢʟᴇ 🔍", url=f"https://www.google.com/search?q={google}")],
-			[InlineKeyboardButton("📞 ʀᴇQᴜᴇsᴛ ᴛᴏ ᴀᴅᴍɪɴ 📞", url=f"https://t.me/GUARDIANff")
-		]]
+            [InlineKeyboardButton("📞 ʀᴇQᴜᴇsᴛ ᴛᴏ ᴀᴅᴍɪɴ 📞", url=f"https://t.me/GUARDIANff")
+        ]]
         k = await message.reply_text(text=script.I_CUDNT.format(search), reply_markup=InlineKeyboardMarkup(button))
         await asyncio.sleep(60)
         await k.delete()
@@ -2148,10 +2163,15 @@ async def advantage_spell_chok(client, message):
         except:
             pass
         return
+        
     user = message.from_user.id if message.from_user else 0
+    
+    # TMDB returns dictionaries, format callback as "tmdb_ID_type" to pass both ID and Movie/TV Show type
     buttons = [[
-        InlineKeyboardButton(text=movie.get('title'), callback_data=f"spol#{movie.movieID}#{user}")
-    ]
+        InlineKeyboardButton(
+            text=movie.get('title') or movie.get('name'), 
+            callback_data=f"spol#tmdb_{movie['id']}_{movie['_type']}#{user}"
+        )]
         for movie in movies
     ]
     buttons.append(
