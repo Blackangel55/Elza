@@ -30,7 +30,7 @@ BTN_URL_REGEX = re.compile(
     r"(\[([^\[]+?)\]\((buttonurl|buttonalert):(?:/{0,2})(.+?)(:same)?\))"
 )
 
-imdb = Cinemagoer(http) 
+imdb = Cinemagoer('http') 
 BANNED = {}
 SMART_OPEN = '“'
 SMART_CLOSE = '”'
