@@ -228,3 +228,31 @@ Note: the first thing to check when /start is silent is that the
 message is going to the right bot — the running bot is @AMSearch2bot
 (see its Koyeb log line "started on AMSearch2bot") — in a private chat,
 not a group (in a group /start only flashes a sticker for 5 seconds).
+
+## 15. Patched zip applied (2026-11-10, user upload)
+
+Sreehari uploaded `Elza-2026-patched.zip` — the branch 2026 code plus
+his own patches — and asked for it to be pushed. Applied as-is (4 files):
+
+- `Lucia/Bot/__init__.py`: `workers=150` → `workers=16` (the section 9
+  note above suggested lowering it on a small host).
+- `plugins/commands.py`: the two LOG_CHANNEL sends in /start are now
+  wrapped in try/except — a failed log send prints an error instead of
+  killing /start.
+- `plugins/extra.py`: a debug handler (`group=-1`) that prints every
+  incoming message (chat, user, text). Same job as the temporary
+  `plugins/debug_updates.py` from the /start investigation, which stays
+  on the branch — remove one of them once the silence is diagnosed.
+- `plugins/pm_filter.py`: `tracemalloc.start()` added;
+  `update_top_messages` wrapped in try/except;
+  `settings['auto_ffilter']` / `settings['imdb']` /
+  `settings['spell_check']` changed to safe `.get()` (a missing key used
+  to raise KeyError and kill the filter); the no-results log now also
+  requires `BIN_CHANNEL` to be set.
+- `example.env` was NOT pushed: the zip's version (empty COLLECTION_NAME)
+  is already identical to the branch — his earlier web edit had emptied
+  it there. Note: an empty COLLECTION_NAME in the live env vars would
+  stop the bot starting; it must be set in Koyeb.
+- The zip's 31 `__pycache__` files were not pushed (bytecode junk).
+- Verified: py_compile passes on all four files (one pre-existing
+  SyntaxWarning for an invalid escape in pm_filter.py, unchanged).

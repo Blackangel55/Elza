@@ -30,7 +30,6 @@ import tracemalloc
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
 
-tracemalloc.start()
 
 TIMEZONE = "Asia/Kolkata"
 BUTTON = {}
@@ -43,10 +42,13 @@ SPELL_CHECK = {}
 async def give_filter(client, message):
     if EMOJI_MODE:
         await message.react(emoji=random.choice(REACTIONS))
-    await silentdb.update_top_messages(message.from_user.id, message.text)
+    try:
+        await silentdb.update_top_messages(message.from_user.id, message.text)
+    except Exception as e:
+        print(f"update_top_messages failed: {e}")
     if message.chat.id != SUPPORT_CHAT_ID:
         settings = await get_settings(message.chat.id)
-        if settings['auto_ffilter']:
+        if settings.get('auto_ffilter', True):
             if re.search(r'https?://\S+|www\.\S+|t\.me/\S+', message.text):
                 if await is_check_admin(client, message.chat.id, message.from_user.id):
                     return
@@ -732,7 +734,7 @@ async def advantage_spoll_choker(bot, query):
     else:
         reqstr1 = query.from_user.id if query.from_user else 0
         reqstr = await bot.get_users(reqstr1)
-        if NO_RESULTS_MSG:
+        if NO_RESULTS_MSG and BIN_CHANNEL:
             await bot.send_message(chat_id=BIN_CHANNEL,text=script.NORSLTS.format(reqstr.id, reqstr.mention, movie))
         contact_admin_button = InlineKeyboardMarkup(
             [[InlineKeyboardButton("🔰 Cʟɪᴄᴋ ʜᴇʀᴇ & ʀᴇǫᴜᴇsᴛ ᴛᴏ ᴀᴅᴍɪɴ🔰", url=OWNER_LNK)]])
@@ -1718,13 +1720,13 @@ async def auto_filter(client, msg, spoll=False):
             # search runs, instead of blocking the results on it afterwards.
             # file=None: the year then comes from the query only, not from
             # the first result's file name.
-            poster_task = asyncio.create_task(get_poster(search)) if settings["imdb"] else None
+            poster_task = asyncio.create_task(get_poster(search)) if settings.get("imdb") else None
             files, offset, total_results = await get_search_results(message.chat.id ,search, offset=0, filter=True)
             if not files:
                 # No results: the poster fetch is pointless now, stop it.
                 if poster_task is not None:
                     poster_task.cancel()
-                if settings["spell_check"]:
+                if settings.get("spell_check", True):
                     ai_sts = await m.edit('🤖 ᴘʟᴇᴀꜱᴇ ᴡᴀɪᴛ, ᴀɪ ɪꜱ ᴄʜᴇᴄᴋɪɴɢ ʏᴏᴜʀ ꜱᴘᴇʟʟɪɴɢ...')
                     is_misspelled = await ai_spell_check(chat_id = message.chat.id,wrong_name=search)
                     if is_misspelled:
@@ -1748,7 +1750,7 @@ async def auto_filter(client, msg, spoll=False):
         search, files, offset, total_results = spoll
         m=await message.reply_text(f'<b>Wᴀɪᴛ {message.from_user.mention} Sᴇᴀʀᴄʜɪɴɢ Yᴏᴜʀ Qᴜᴇʀʏ :<i>{search}...</i></b>', reply_to_message_id=message.id)
         settings = await get_settings(message.chat.id)
-        poster_task = asyncio.create_task(get_poster(search, file=(files[0]).file_name)) if settings["imdb"] and files else None
+        poster_task = asyncio.create_task(get_poster(search, file=(files[0]).file_name)) if settings.get("imdb") and files else None
         await msg.message.delete()
     key = f"{message.chat.id}-{message.id}"
     FRESH[key] = search
