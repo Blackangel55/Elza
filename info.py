@@ -106,7 +106,7 @@ MAX_B_TN = environ.get("MAX_B_TN", "10")
 MAX_BTN = is_enabled((environ.get('MAX_BTN', "True")), True)
 PORT = _int_env("PORT", 8080)
 MSG_ALRT = environ.get('MSG_ALRT', 'Share & Support Us ♥️')
-SUPPORT_CHAT = environ.get('SUPPORT_CHAT', '')
+SUPPORT_CHAT = environ.get('SUPPORT_CHAT', 'https://t.me/+NUkifqTOBq40OTQ1')
 SUPPORT_LNK = environ.get('SUPPORT_LNK', OWNER_LNK)  # Support button URL; set this, don't hardcode it 
 P_TTI_SHOW_OFF = is_enabled((environ.get('P_TTI_SHOW_OFF', "True")), False)
 # ==========================================
