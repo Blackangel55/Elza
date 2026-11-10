@@ -321,29 +321,37 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
     if text_terms:
         # $text is OR, so a year pulls in every file from that year. First
         # require the title words; fall back to plain $text if that finds nothing.
+        # Relevance first would let an older file with a shorter name win
+        # (textScore rewards short filenames), so the strict search sorts
+        # newest first; only the plain fallback keeps relevance first.
         base_filter = {'$text': {'$search': text_terms}}
         if file_type:
             base_filter['file_type'] = file_type
-        text_filters = [base_filter]
+        text_sort = [('score', {'$meta': 'textScore'}), ('added_on', -1)]
+        latest_sort = [('added_on', -1), ('score', {'$meta': 'textScore'})]
         required = _required_terms(original_query)
         if required:
             strict_filter = dict(base_filter)
             strict_filter['$and'] = [{'file_name': re.compile(re.escape(t), re.IGNORECASE)} for t in required]
-            text_filters.insert(0, strict_filter)
-        for text_filter in text_filters:
+            text_filters = [(strict_filter, latest_sort), (base_filter, text_sort)]
+        else:
+            # Bare year (or stop words only): every match is equally
+            # relevant, so newest first.
+            text_filters = [(base_filter, latest_sort)]
+        for text_filter, sort_spec in text_filters:
             try:
                 if MULTIPLE_DB:
                     text_results = await asyncio.gather(
                         Media.count_documents(text_filter),
                         Media2.count_documents(text_filter),
-                        Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results),
-                        Media2.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results)
+                        Media.find(text_filter, projection).sort(sort_spec).skip(offset).limit(max_results).to_list(length=max_results),
+                        Media2.find(text_filter, projection).sort(sort_spec).skip(offset).limit(max_results).to_list(length=max_results)
                     )
                     total_results = text_results[0] + text_results[1]
                     files = (text_results[2] + text_results[3])[:max_results]
                 else:
                     total_results = await Media.count_documents(text_filter)
-                    files = await Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results)
+                    files = await Media.find(text_filter, projection).sort(sort_spec).skip(offset).limit(max_results).to_list(length=max_results)
                 if files:
                     logger.info(f"✅ Found {len(files)} results with $text search: '{text_terms}'")
                     next_offset = offset + len(files)
