@@ -262,14 +262,22 @@ _TITLE_STOP_WORDS = {"the", "a", "an", "and", "or", "of", "to", "in", "is", "for
 _YEAR_RE = re.compile(r'(19|20)\d\d')
 
 
-# Terms a file must contain: all query terms except stop words and the
-# year ($text is OR, so a year alone pulls in every file from that year).
-def _required_terms(query: str):
-    terms = re.sub(r'[^A-Za-z0-9 ]+', ' ', query or '').split()
-    return [t for t in terms
-            if len(t) >= 2
-            and t.lower() not in _TITLE_STOP_WORDS
-            and not _YEAR_RE.fullmatch(t)]
+def _split_terms(query: str):
+    """Split a query into title words (no stop words, no year) and years."""
+    words = re.sub(r'[^A-Za-z0-9 ]+', ' ', query or '').split()
+    years = [w for w in words if _YEAR_RE.fullmatch(w)]
+    titles = [w for w in words
+              if len(w) >= 2
+              and w.lower() not in _TITLE_STOP_WORDS
+              and not _YEAR_RE.fullmatch(w)]
+    return titles, years
+
+
+def _merge_newest(*lists, limit):
+    """Merge result lists from both databases, newest file first."""
+    merged = [f for lst in lists for f in lst]
+    merged.sort(key=lambda f: getattr(f, 'added_on', None) or datetime.min, reverse=True)
+    return merged[:limit]
 
 
 async def get_search_results(chat_id, query, file_type=None, max_results=10, offset=0, filter=False):
@@ -298,7 +306,8 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
         'file_size': 1,
         'file_type': 1,
         'caption': 1,
-        'mime_type': 1
+        'mime_type': 1,
+        'added_on': 1
     }
 
     search_queries = []
@@ -319,36 +328,40 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
         search_queries.append(query_no_special)
     text_terms = _text_search_terms(original_query)
     if text_terms:
-        # $text is OR, so a year pulls in every file from that year. First
-        # require the title words; fall back to plain $text if that finds nothing.
-        # Relevance first would let an older file with a shorter name win
-        # (textScore rewards short filenames), so the strict search sorts
-        # newest first; only the plain fallback keeps relevance first.
-        base_filter = {'$text': {'$search': text_terms}}
-        if file_type:
-            base_filter['file_type'] = file_type
-        text_sort = [('score', {'$meta': 'textScore'}), ('added_on', -1)]
-        latest_sort = [('added_on', -1), ('score', {'$meta': 'textScore'})]
-        required = _required_terms(original_query)
-        if required:
-            strict_filter = dict(base_filter)
-            strict_filter['$and'] = [{'file_name': re.compile(re.escape(t), re.IGNORECASE)} for t in required]
-            text_filters = [(strict_filter, latest_sort), (base_filter, text_sort)]
+        titles, years = _split_terms(original_query)
+        sort_spec = [('added_on', -1)]   # newest first, always
+        attempts = []
+
+        def _with_type(f):
+            if file_type:
+                f['file_type'] = file_type
+            return f
+
+        if titles:
+            # $text uses the index to find candidates by title words only.
+            # Every title word AND the year must then appear in the file name.
+            title_text = ' '.join(titles)
+            title_res = [{'file_name': re.compile(re.escape(t), re.IGNORECASE)} for t in titles]
+            year_res = [{'file_name': re.compile(r'(?<!\d)' + y + r'(?!\d)')} for y in years]
+            attempts.append(_with_type({'$text': {'$search': title_text}, '$and': title_res + year_res}))
+            if years:
+                # No file with that year: show the title of any year, newest first.
+                attempts.append(_with_type({'$text': {'$search': title_text}, '$and': title_res}))
         else:
-            # Bare year (or stop words only): every match is equally
-            # relevant, so newest first.
-            text_filters = [(base_filter, latest_sort)]
-        for text_filter, sort_spec in text_filters:
+            # Only a year or only stop words: plain text search, newest first.
+            attempts.append(_with_type({'$text': {'$search': text_terms}}))
+
+        for text_filter in attempts:
             try:
                 if MULTIPLE_DB:
-                    text_results = await asyncio.gather(
+                    c1, c2, f1, f2 = await asyncio.gather(
                         Media.count_documents(text_filter),
                         Media2.count_documents(text_filter),
                         Media.find(text_filter, projection).sort(sort_spec).skip(offset).limit(max_results).to_list(length=max_results),
                         Media2.find(text_filter, projection).sort(sort_spec).skip(offset).limit(max_results).to_list(length=max_results)
                     )
-                    total_results = text_results[0] + text_results[1]
-                    files = (text_results[2] + text_results[3])[:max_results]
+                    total_results = c1 + c2
+                    files = _merge_newest(f1, f2, limit=max_results)
                 else:
                     total_results = await Media.count_documents(text_filter)
                     files = await Media.find(text_filter, projection).sort(sort_spec).skip(offset).limit(max_results).to_list(length=max_results)
