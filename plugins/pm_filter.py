@@ -91,7 +91,7 @@ async def refercall(bot, query):
     btn = [[
         InlineKeyboardButton('ɪɴᴠɪᴛᴇ ɪɪɴᴋ', url=f'https://telegram.me/share/url?url=https://t.me/{bot.me.username}?start=reff_{query.from_user.id}&text=Hello%21%20Experience%20a%20bot%20that%20offers%20a%20vast%20library%20of%20unlimited%20movies%20and%20series.%20%F0%9F%98%83'),
         InlineKeyboardButton(f'⏳ {referdb.get_refer_points(query.from_user.id)}', callback_data='ref_point'),
-        InlineKeyboardButton('ʙᴀᴄᴋ', callback_data='premium')
+        InlineKeyboardButton('ʙᴀᴄᴋ', callback_data='start')
     ]]
     reply_markup = InlineKeyboardMarkup(btn)
     await bot.edit_message_media(
@@ -100,7 +100,7 @@ async def refercall(bot, query):
             InputMediaPhoto("https://graph.org/file/1a2e64aee3d4d10edd930.jpg")
         )
     await query.message.edit_text(
-        text=f'Hay Your refer link:\n\nhttps://t.me/{bot.me.username}?start=reff_{query.from_user.id}\n\nShare this link with your friends, Each time they join,  you will get 10 refferal points and after 100 points you will get 1 month premium subscription.',
+        text=f'Hay Your refer link:\n\nhttps://t.me/{bot.me.username}?start=reff_{query.from_user.id}\n\nShare this link with your friends, each time they join you will get 10 referral points.',
         reply_markup=reply_markup,
         parse_mode=enums.ParseMode.HTML
         )
@@ -1326,106 +1326,6 @@ async def cb_handler(client: Client, query: CallbackQuery):
             parse_mode=enums.ParseMode.HTML
         )
   
-    elif query.data == "give_trial":
-        try:
-            user_id = query.from_user.id
-            has_free_trial = await db.check_trial_status(user_id)
-            if has_free_trial:
-                await query.answer("🚸 ʏᴏᴜ'ᴠᴇ ᴀʟʀᴇᴀᴅʏ ᴄʟᴀɪᴍᴇᴅ ʏᴏᴜʀ ꜰʀᴇᴇ ᴛʀɪᴀʟ ᴏɴᴄᴇ !\n\n📌 ᴄʜᴇᴄᴋᴏᴜᴛ ᴏᴜʀ ᴘʟᴀɴꜱ ʙʏ : /plan", show_alert=True)
-                return
-            else:            
-                await db.give_free_trial(user_id)
-                await query.message.reply_text(
-                    text="<b>🥳 ᴄᴏɴɢʀᴀᴛᴜʟᴀᴛɪᴏɴꜱ\n\n🎉 ʏᴏᴜ ᴄᴀɴ ᴜsᴇ ꜰʀᴇᴇ ᴛʀᴀɪʟ ꜰᴏʀ <u>5 ᴍɪɴᴜᴛᴇs</u> ꜰʀᴏᴍ ɴᴏᴡ !</b>",
-                    quote=False,
-                    disable_web_page_preview=True,                  
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💸 ᴄʜᴇᴄᴋᴏᴜᴛ ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴꜱ 💸", callback_data='seeplans')]]))
-                return    
-        except Exception as e:
-            print(e)
-
-    elif query.data == "premium":
-        try:
-            btn = [[
-                InlineKeyboardButton('🧧 ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ 🧧', callback_data='buy'),
-            ],[
-                InlineKeyboardButton('👥 ʀᴇꜰᴇʀ ꜰʀɪᴇɴᴅꜱ', callback_data='reffff'),
-                InlineKeyboardButton('🈚 ꜰʀᴇᴇ ᴛʀɪᴀʟ', callback_data='give_trial')
-            ],[            
-                InlineKeyboardButton('⇋ ʙᴀᴄᴋ ᴛᴏ ʜᴏᴍᴇ ⇋', callback_data='start')
-            ]]
-            reply_markup = InlineKeyboardMarkup(btn)                        
-            await client.edit_message_media(                
-                query.message.chat.id, 
-                query.message.id, 
-                InputMediaPhoto(random.choice(PICS))                       
-            )
-            await query.message.edit_text(
-                text=script.BPREMIUM_TXT,
-                reply_markup=reply_markup,
-                parse_mode=enums.ParseMode.HTML
-            )
-        except Exception as e:
-            print(e)
-
-    elif query.data == "buy":
-        try:
-            btn = [[ 
-                InlineKeyboardButton('ꜱᴛᴀʀ', callback_data='star'),
-                InlineKeyboardButton('ᴜᴘɪ', callback_data='upi')
-            ],[
-                InlineKeyboardButton('🚫 ᴄʟᴏꜱᴇ 🚫', callback_data='close_data')
-            ]]
-            reply_markup = InlineKeyboardMarkup(btn)
-            await query.message.reply_photo(
-                photo=(SUBSCRIPTION),
-                caption=script.PREMIUM_TEXT.format(query.from_user.mention),
-                reply_markup=reply_markup,
-                parse_mode=enums.ParseMode.HTML
-            ) 
-        except Exception as e:
-            print(e)
-
-    elif query.data == "upi":
-        try:
-            btn = [[ 
-                InlineKeyboardButton('📱 ꜱᴇɴᴅ  ᴘᴀʏᴍᴇɴᴛ ꜱᴄʀᴇᴇɴꜱʜᴏᴛ', url=OWNER_LNK),
-            ],[
-                InlineKeyboardButton('🚫 ᴄʟᴏꜱᴇ 🚫', callback_data='close_data')
-            ]]
-            reply_markup = InlineKeyboardMarkup(btn)
-            await query.message.reply_photo(
-                photo=(SUBSCRIPTION),
-                caption=script.PREMIUM_UPI_TEXT.format(query.from_user.mention),
-                reply_markup=reply_markup,
-                parse_mode=enums.ParseMode.HTML
-            ) 
-        except Exception as e:
-            print(e)
-
-    elif query.data == "star":
-        try:
-            btn = [
-                InlineKeyboardButton(f"{stars}⭐", callback_data=f"buy_{stars}")
-                for stars, days in STAR_PREMIUM_PLANS.items()
-            ]
-            buttons = [btn[i:i + 2] for i in range(0, len(btn), 2)]
-            buttons.append([InlineKeyboardButton("⋞ ʙᴀᴄᴋ", callback_data="buy")])
-            reply_markup = InlineKeyboardMarkup(buttons)
-            await client.edit_message_media(
-                query.message.chat.id, 
-                query.message.id, 
-                InputMediaPhoto(random.choice(PICS))
-	        ) 
-            await query.message.edit_text(
-                text=script.PREMIUM_STAR_TEXT,
-                reply_markup=reply_markup,
-                parse_mode=enums.ParseMode.HTML
-	    )
-        except Exception as e:
-            print(e)
-
-
     elif query.data == "earn":
         try:
             btn = [[ 

@@ -71,5 +71,3 @@ class SilentXBot(Client):
       
 SilentX = SilentXBot()
 
-multi_clients = {}
-work_loads = {}

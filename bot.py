@@ -12,10 +12,9 @@ from database.users_chats_db import db
 from info import *
 from utils import temp
 from Script import script
-from plugins import web_server, check_expired_premium
+from plugins import web_server
 from Lucia.Bot import SilentX
 from Lucia.util.keepalive import ping_server
-from Lucia.Bot.clients import initialize_clients
 import pyrogram.utils
 
 logging.config.fileConfig('logging.conf')
@@ -40,7 +39,6 @@ async def SilentXBotz_start():
     await SilentX.start()
     bot_info = await SilentX.get_me()
     SilentX.username = bot_info.username
-    await initialize_clients()
     # ping_server() (Heroku keepalive) only runs when a real public URL
     # is configured; see info.py - URL is "" without FQDN, and
     # keepalive now skips in that case. The old threading ping_loop
@@ -62,7 +60,6 @@ async def SilentXBotz_start():
     temp.B_NAME = me.first_name
     temp.B_LINK = me.mention
     SilentX.username = '@' + me.username
-    asyncio.create_task(check_expired_premium(SilentX))
     logging.info(f"{me.first_name} with Pyrogram v{__version__} (Layer {layer}) started on {me.username}.")
     logging.info(script.LOGO)
     tz = pytz.timezone('Asia/Kolkata')

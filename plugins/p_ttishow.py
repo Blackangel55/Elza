@@ -164,7 +164,6 @@ async def get_stats(bot, message):
         SilentXBotz = await message.reply('ᴀᴄᴄᴇꜱꜱɪɴɢ ꜱᴛᴀᴛᴜꜱ ᴅᴇᴛᴀɪʟꜱ...')
         total_users = await db.total_users_count()
         totl_chats = await db.total_chat_count()
-        premium = await db.all_premium_users()
         file1 = await Media.count_documents()
         size = await db.get_db_size()
         free = 536870912 - size
@@ -175,7 +174,7 @@ async def get_stats(bot, message):
         cpu = psutil.cpu_percent()
         if MULTIPLE_DB == False:
             await SilentXBotz.edit(script.STATUS_TXT.format(
-                total_users, totl_chats, premium, file1, size, free, uptime, ram, cpu))                                               
+                total_users, totl_chats, file1, size, free, uptime, ram, cpu))                                               
             return
         file2 = await Media2.count_documents()
         size2 = await db2.get_db_size()
@@ -183,7 +182,7 @@ async def get_stats(bot, message):
         size2 = get_size(size2)
         free2 = get_size(free2)
         await SilentXBotz.edit(script.MULTI_STATUS_TXT.format(
-            total_users, totl_chats, premium, file1, size, free,
+            total_users, totl_chats, file1, size, free,
             file2, size2, free2, uptime, ram, cpu, (int(file1) + int(file2))
         ))
     except Exception as e:

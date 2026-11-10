@@ -25,11 +25,7 @@
 - 🤖 Custom Force Subscription For Group Owners
 - 📊 Full Customisable. 
 - 🔄 Latest Features.
-- 📺 Best Streaming Site.
 - 📥 Top Trending & Refer Feature.
-- 👑 Premium Subscription Funtion.
-- 📌 Premium Expired Reminder.
-- 🔥 Telegram Star Payment Method
 
 # New Version Released - V4.2
 - Now Group Owners Change There All Settings From Callback Button ✅
@@ -37,7 +33,6 @@
 - Added /reload Command 
 - UI Change
 - New Channel Update Theme
-- Added Support Of Streming Only For Premium Users
 - Now Owner Can Reset All Connect Groups Settings 
 
 
@@ -51,7 +46,7 @@
 * `DATABASE_URI2`: Your Second MongoDB URL (Optional - Add This If You Set MULTIPLE_DB True.).
 * `LOG_CHANNEL` : A Channel To Log The Activities Of Bot. Add Channel Id And Make Sure Bot Is An Admin In The Channel.
 * `SUPPORT_GROUP`: Add Your Support Group Id In This Veriable.
-* `BIN_CHANNEL`: A Channel To The Stream And Download Feature, Add Channel Id And Make Bot Admin In Channel.
+* `BIN_CHANNEL`: A Channel Where The Bot Stores Files, Add Channel Id And Make Bot Admin In Channel.
 * `FQDN`: Make A Veriable On Your Deploying Plartform AndAdd You Deployed Bot App Link
 * `AUTH_CHANNEL`: ID of force subscribe channels (Multiple channels can be used separated by space)
 * `CHANNELS`: Username or ID of your files channels (Multiple channels can be used separated by space)

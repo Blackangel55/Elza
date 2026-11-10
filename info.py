@@ -51,7 +51,6 @@ PICS = (environ.get('PICS', 'https://graph.org/file/cd932e8292208cf23526d.jpg ht
 NOR_IMG = environ.get("NOR_IMG", "https://telegra.ph/file/0593a3103ba1b9a5855bf.jpg")
 MELCOW_VID = environ.get("MELCOW_VID", "")
 SPELL_IMG = environ.get("SPELL_IMG", "https://graph.org/file/a96c590ca726b2dbb9d96.jpg")
-SUBSCRIPTION = (environ.get('SUBSCRIPTION', 'https://envs.sh/nwn.jpg'))
 FSUB_IMG = (environ.get('FSUB_PICS', 'https://i.ibb.co/3Y8t1Cxz/x.jpg')).split() 
 
 ADMINS = [int(admin) if id_pattern.search(admin) else admin for admin in environ.get('ADMINS', '').split()] 
@@ -59,7 +58,6 @@ CHANNELS = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('CHAN
 LOG_CHANNEL = _int_env('LOG_CHANNEL', required=True)  
 BIN_CHANNEL = _int_env('BIN_CHANNEL', required=True)  
 MOVIE_UPDATE_CHANNEL = _int_env('MOVIE_UPDATE_CHANNEL')  # None = don't post movie updates  
-PREMIUM_LOGS = _int_env('PREMIUM_LOGS', LOG_CHANNEL)  # falls back to LOG_CHANNEL 
 auth_grp = environ.get('AUTH_GROUP')
 AUTH_GROUPS = [int(ch) for ch in auth_grp.split()] if auth_grp else None
 reqst_channel = environ.get('REQST_CHANNEL_ID', '') 
@@ -145,7 +143,7 @@ ON_HEROKU = 'DYNO' in environ
 if ON_HEROKU:
     APP_NAME = environ.get('APP_NAME')
 BIND_ADRESS = str(getenv('WEB_SERVER_BIND_ADDRESS', '0.0.0.0'))
-# Public base URL for stream links and the keepalive ping. "" when not
+# Public base URL for the keepalive ping. "" when not
 # configured - never http://0.0.0.0/, which the old ping_loop hit.
 if ON_HEROKU and APP_NAME:
     FQDN = APP_NAME + '.herokuapp.com'
@@ -159,25 +157,15 @@ else:
 SLEEP_THRESHOLD = int(environ.get('SLEEP_THRESHOLD', '60'))
 WORKERS = int(environ.get('WORKERS', '4'))
 SESSION_NAME = str(environ.get('SESSION_NAME', 'SilentXBotz'))
-MULTI_CLIENT = False
 name = str(environ.get('name', 'SilentX'))
 PING_INTERVAL = int(environ.get("PING_INTERVAL", "1200"))  # 20 minutes
 
 
 REACTIONS = ["🤝", "😇", "🤗", "😍", "👍", "🎅", "😐", "🥰", "🤩", "😱", "🤣", "😘", "👏", "😛", "😈", "🎉", "⚡️", "🫡", "🤓", "😎", "🏆", "🔥", "🤭", "🌚", "🆒", "👻", "😁"]
 
-STAR_PREMIUM_PLANS = {
-    1: "7day",
-    30: "15day",    
-    60: "1month", 
-    120: "2month",   
-}
-
 Bot_cmds = {
     "start": "ꜱᴛᴀʀᴛ ᴛʜᴇ ʙᴏᴛ",
     "trendlist": "ɢᴇᴛ ᴛᴏᴘ ꜱᴇᴀʀᴄʜ ʟɪꜱᴛ",
-    "myplan" : "ᴄʜᴇᴄᴋ ᴘʀᴇᴍɪᴜᴍ ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴ",
-    "plan" :"ᴄʜᴇᴄᴋ ᴘʀᴇᴍɪᴜᴍ ᴘʀɪᴄᴇ",
     "settings": "ᴄʜᴀɴɢᴇ sᴇᴛᴛɪɴɢs",
     "group_cmd": "ᴅᴇʟᴇᴛᴇ ᴀ ꜱᴘᴇᴄɪꜰɪᴄ ꜰɪʟᴇ ꜰʀᴏᴍ ᴅʙ.",
     "admin_cmd": "ᴅᴇʟᴇᴛᴇ ᴀ ꜱᴘᴇᴄɪꜰɪᴄ ꜰɪʟᴇ ꜰʀᴏᴍ ᴅʙ.",

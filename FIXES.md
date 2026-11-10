@@ -134,3 +134,43 @@ branch 2026, verified by diff: the TMDB code, the TMDB API key as committed
 on that branch (still hardcoded in `info.py` and `utils.py` — rotate it and
 move it to an env var), and both Malayalam messages. The pushed copy lives
 in `~/workspace/elza-2026/` and `Elza-fixed.zip` was rebuilt from it.
+
+## 12. Streaming + premium plans removed (2026-11-10)
+
+On Sreehari's request ("streaming and premium plans also not needed").
+
+Streaming — gone: the `/watch` and `/download` routes and the
+`media_streamer` in `plugins/route.py`, `Lucia/util/custom_dl.py`
+(ByteStreamer), `Lucia/util/render_template.py`, the `dl.html`/`req.html`
+templates, `Lucia/Bot/clients.py` (multi-client serving) and the
+`multi_clients`/`work_loads` dicts. `plugins/route.py` is now only a
+health endpoint (`/`, `/health`, `/healthz` returning `{"status": "ok"}`),
+so the web server in `bot.py` stays for Koyeb Web health checks only.
+`Lucia/util/file_properties.py` was kept but trimmed: `get_file_ids`
+(streaming-only) is gone, `get_name`/`get_hash`/`get_media_file_size`
+stay — `plugins/pm_filter.py` imports them, and deleting the file would
+have broken the plugin at import time. `BIN_CHANNEL` stays: it is still
+used for the no-results log message in `pm_filter.py`.
+
+Premium — gone: `plugins/Premium.py` (`/plan`, `/myplan`, `/add_premium`,
+`/remove_premium`, `/get_premium`, `/premium_users`, Stars purchase),
+`plugins/license.py` (`/redeem`, `/add_redeem`, `/clearcodes`,
+`/allcodes`), the free trial, the `buy`/`star`/`upi`/`premium`/
+`give_trial` callbacks in `plugins/pm_filter.py`, the
+`check_expired_premium` loop in `plugins/__init__.py` + `bot.py`, the
+premium methods in `database/users_chats_db.py` (`has_premium_access`,
+`get_expired`, `get_expiring_soon`, `remove_premium_access`,
+`check_trial_status`, `give_free_trial`, `all_premium_users`, plus the
+`codes` collection), `STAR_PREMIUM_PLANS` / `PREMIUM_LOGS` /
+`SUBSCRIPTION` / `MULTI_CLIENT` in `info.py`, the premium texts and
+`/stats` premium count in `Script.py` / `plugins/p_ttishow.py`, and the
+premium lines in `README.md` / `example.env`. Verification now applies
+to everyone: the `if not await db.has_premium_access(user_id):` wrapper
+in `plugins/commands.py` was removed (the verification block itself is
+unchanged). The refer system stays, but its reward was premium, so at
+100 points the referrer no longer gets a 1-month premium grant — points
+just reset to 0 — and the three texts that promised premium (self-refer
+message, refer link text, 100-point DM) no longer mention it. Note:
+refer points now have no reward attached; remove the refer system too
+if it is not wanted. Verified: py_compile clean, zero references to
+premium/streaming in any `.py` file, TMDB and Malayalam intact.

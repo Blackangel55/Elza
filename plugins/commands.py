@@ -110,7 +110,7 @@ async def start(client, message):
             await message.reply_text("Invalid refer!")
             return
         if user_id == message.from_user.id:
-            await message.reply_text("Hᴇʏ Dᴜᴅᴇ, Yᴏᴜ Cᴀɴ'ᴛ Rᴇғᴇʀ Yᴏᴜʀsᴇʟғ 🤣!\n\nsʜᴀʀᴇ ʟɪɴᴋ ʏᴏᴜʀ ғʀɪᴇɴᴅ ᴀɴᴅ ɢᴇᴛ 10 ʀᴇғᴇʀʀᴀʟ ᴘᴏɪɴᴛ ɪғ ʏᴏᴜ ᴀʀᴇ ᴄᴏʟʟᴇᴄᴛɪɴɢ 100 ʀᴇғᴇʀʀᴀʟ ᴘᴏɪɴᴛs ᴛʜᴇɴ ʏᴏᴜ ᴄᴀɴ ɢᴇᴛ 1 ᴍᴏɴᴛʜ ғʀᴇᴇ ᴘʀᴇᴍɪᴜᴍ ᴍᴇᴍʙᴇʀsʜɪᴘ.")
+            await message.reply_text("Hey, you can't refer yourself! Share your link with your friends and get 10 referral points for each join.")
             return
         if referdb.is_user_in_list(message.from_user.id):
             await message.reply_text("Yᴏᴜ ʜᴀᴠᴇ ʙᴇᴇɴ ᴀʟʀᴇᴀᴅʏ ɪɴᴠɪᴛᴇᴅ ❗")
@@ -124,16 +124,7 @@ async def start(client, message):
         if fromuse == 100:
             referdb.add_refer_points(user_id, 0) 
             await message.reply_text(f"🎉 𝗖𝗼𝗻𝗴𝗿𝗮𝘁𝘂𝗹𝗮𝘁𝗶𝗼𝗻𝘀! 𝗬𝗼𝘂 𝘄𝗼𝗻 𝟭𝟬 𝗥𝗲𝗳𝗲𝗿𝗿𝗮𝗹 𝗽𝗼𝗶𝗻𝘁 𝗯𝗲𝗰𝗮𝘂𝘀𝗲 𝗬𝗼𝘂 𝗵𝗮𝘃𝗲 𝗯𝗲𝗲𝗻 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝘆 𝗜𝗻𝘃𝗶𝘁𝗲𝗱 ☞ {uss.mention}!")		    
-            await message.reply_text(user_id, f"You have been successfully invited by {message.from_user.mention}!") 	
-            seconds = 2592000
-            if seconds > 0:
-                expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
-                user_data = {"id": user_id, "expiry_time": expiry_time}
-                await db.update_user(user_data)		    
-                await client.send_message(
-                chat_id=user_id,
-                text=f"<b>Hᴇʏ {uss.mention}\n\nYᴏᴜ ɢᴏᴛ 1 ᴍᴏɴᴛʜ ᴘʀᴇᴍɪᴜᴍ sᴜʙsᴄʀɪᴘᴛɪᴏɴ ʙʏ ɪɴᴠɪᴛɪɴɢ 10 ᴜsᴇʀs ❗", disable_web_page_preview=True              
-                )
+            await client.send_message(chat_id=user_id, text=f"You have been successfully invited by {message.from_user.mention}!")
             for admin in ADMINS:
                 await client.send_message(chat_id=admin, text=f"Sᴜᴄᴄᴇss ғᴜʟʟʏ ᴛᴀsᴋ ᴄᴏᴍᴘʟᴇᴛᴇᴅ ʙʏ ᴛʜɪs ᴜsᴇʀ:\n\nuser Nᴀᴍᴇ: {uss.mention}\n\nUsᴇʀ ɪᴅ: {uss.id}!")	
         else:
@@ -207,49 +198,48 @@ async def start(client, message):
         print(f"Error In Fsub :- {e}")
         
     user_id = m.from_user.id
-    if not await db.has_premium_access(user_id):
-        try:
-            grp_id = int(grp_id)
-            user_verified = await db.is_user_verified(user_id)
-            settings = await get_settings(grp_id)
-            is_second_verify = await db.use_second_verify(user_id, settings.get('verify_time', TWO_VERIFY_GAP)) 
-            is_third_verify = await db.use_third_verify(user_id, settings.get('third_verify_time', THREE_VERIFY_GAP))
-            if settings.get("is_verify", IS_VERIFY) and (not user_verified or is_second_verify or is_third_verify):                
-                verify_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=7))
-                await db.create_verify_id(user_id, verify_id)
-                temp.VERIFICATIONS[user_id] = grp_id
-                if message.command[1].startswith('allfiles'):
-                    verify = f"https://telegram.me/{temp.U_NAME}?start=sendall_{user_id}_{verify_id}_{file_id}"
-                else:
-                    verify = f"https://telegram.me/{temp.U_NAME}?start=notcopy_{user_id}_{verify_id}_{file_id}"
-                if is_third_verify:
-                    howtodownload = settings.get('tutorial_3', TUTORIAL_3)
-                else:
-                    howtodownload = settings.get('tutorial_2', TUTORIAL_2) if is_second_verify else settings.get('tutorial', TUTORIAL)
-                buttons = [[
-                    InlineKeyboardButton(text="♻️ ᴄʟɪᴄᴋ ʜᴇʀᴇ ᴛᴏ ᴠᴇʀɪꜰʏ ♻️", url=verify)
-                ],[
-                    InlineKeyboardButton(text="⁉️ ʜᴏᴡ ᴛᴏ ᴠᴇʀɪꜰʏ ⁉️", url=howtodownload)
-                ]]
-                reply_markup=InlineKeyboardMarkup(buttons)
-                if await db.user_verified(user_id): 
-                    msg = script.THIRDT_VERIFICATION_TEXT
-                else:            
-                    msg = script.SECOND_VERIFICATION_TEXT if is_second_verify else script.VERIFICATION_TEXT
-                n=await m.reply_text(
-                    text=msg.format(message.from_user.mention),
-                    protect_content = True,
-                    reply_markup=reply_markup,
-                    parse_mode=enums.ParseMode.HTML
-                )
-                await asyncio.sleep(300) 
-                await n.delete()
-                await m.delete()
-                return
-        except Exception as e:
-            await log_error(client, f"Got Error In Verification Funtion.\n\n Error - {e}")
-            print(f"Error In Verification - {e}")
-            pass
+    try:
+        grp_id = int(grp_id)
+        user_verified = await db.is_user_verified(user_id)
+        settings = await get_settings(grp_id)
+        is_second_verify = await db.use_second_verify(user_id, settings.get('verify_time', TWO_VERIFY_GAP)) 
+        is_third_verify = await db.use_third_verify(user_id, settings.get('third_verify_time', THREE_VERIFY_GAP))
+        if settings.get("is_verify", IS_VERIFY) and (not user_verified or is_second_verify or is_third_verify):                
+            verify_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=7))
+            await db.create_verify_id(user_id, verify_id)
+            temp.VERIFICATIONS[user_id] = grp_id
+            if message.command[1].startswith('allfiles'):
+                verify = f"https://telegram.me/{temp.U_NAME}?start=sendall_{user_id}_{verify_id}_{file_id}"
+            else:
+                verify = f"https://telegram.me/{temp.U_NAME}?start=notcopy_{user_id}_{verify_id}_{file_id}"
+            if is_third_verify:
+                howtodownload = settings.get('tutorial_3', TUTORIAL_3)
+            else:
+                howtodownload = settings.get('tutorial_2', TUTORIAL_2) if is_second_verify else settings.get('tutorial', TUTORIAL)
+            buttons = [[
+                InlineKeyboardButton(text="♻️ ᴄʟɪᴄᴋ ʜᴇʀᴇ ᴛᴏ ᴠᴇʀɪꜰʏ ♻️", url=verify)
+            ],[
+                InlineKeyboardButton(text="⁉️ ʜᴏᴡ ᴛᴏ ᴠᴇʀɪꜰʏ ⁉️", url=howtodownload)
+            ]]
+            reply_markup=InlineKeyboardMarkup(buttons)
+            if await db.user_verified(user_id): 
+                msg = script.THIRDT_VERIFICATION_TEXT
+            else:            
+                msg = script.SECOND_VERIFICATION_TEXT if is_second_verify else script.VERIFICATION_TEXT
+            n=await m.reply_text(
+                text=msg.format(message.from_user.mention),
+                protect_content = True,
+                reply_markup=reply_markup,
+                parse_mode=enums.ParseMode.HTML
+            )
+            await asyncio.sleep(300) 
+            await n.delete()
+            await m.delete()
+            return
+    except Exception as e:
+        await log_error(client, f"Got Error In Verification Funtion.\n\n Error - {e}")
+        print(f"Error In Verification - {e}")
+        pass
     
     if data.startswith("allfiles"):
         files = temp.GETALL.get(file_id)
