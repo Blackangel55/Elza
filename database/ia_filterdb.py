@@ -275,15 +275,6 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
     query_no_special = SPACES_PATTERN.sub(' ', query_no_special).strip()
     if query_no_special and query_no_special not in search_queries:
         search_queries.append(query_no_special)
-
-    # FAST PATH: $text search uses the text index on file_name (created by
-    # Media.ensure_indexes() at startup). The regex search below cannot use
-    # any index - every attempt scans the whole collection, and
-    # count_documents scans it again - so one search could cost up to 6 full
-    # collection scans. $text serves matches from the index instead and
-    # ranks them by relevance. If it finds nothing (or the text index is
-    # missing) the regex search below still runs, so caption-only matches
-    # and odd queries keep working, just slower.
     text_terms = _text_search_terms(original_query)
     if text_terms:
         text_filter = {'$text': {'$search': text_terms}}
