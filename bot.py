@@ -45,15 +45,24 @@ async def SilentXBotz_start():
     # that hit http://0.0.0.0/ every 120s has been removed.
     if ON_HEROKU and URL:
         asyncio.create_task(ping_server())
-    b_users, b_chats = await db.get_banned()
-    temp.BANNED_USERS = b_users
-    temp.BANNED_CHATS = b_chats
-    await Media.ensure_indexes()
-    if MULTIPLE_DB:
-        await Media2.ensure_indexes()
-        print("Multiple Database Mode On. Now Files Will Be Save In Second DB If First DB Is Full")
-    else:
-        print("Single DB Mode On ! Files Will Be Save In First Database")
+    # These three steps must never kill the whole bot: a wrong LOG_CHANNEL
+    # or a failing index used to crash startup right here, before idle(),
+    # so the bot never came online and /start got no reply at all.
+    try:
+        b_users, b_chats = await db.get_banned()
+        temp.BANNED_USERS = b_users
+        temp.BANNED_CHATS = b_chats
+    except Exception as e:
+        logging.warning(f"Could not load banned users/chats, continuing with empty lists: {e}")
+    try:
+        await Media.ensure_indexes()
+        if MULTIPLE_DB:
+            await Media2.ensure_indexes()
+            print("Multiple Database Mode On. Now Files Will Be Save In Second DB If First DB Is Full")
+        else:
+            print("Single DB Mode On ! Files Will Be Save In First Database")
+    except Exception as e:
+        logging.warning(f"Could not create DB indexes, continuing without them (search falls back to regex): {e}")
     me = await SilentX.get_me()
     temp.ME = me.id
     temp.U_NAME = me.username
@@ -66,7 +75,10 @@ async def SilentXBotz_start():
     today = date.today()
     now = datetime.now(tz)
     time_str = now.strftime("%H:%M:%S %p")
-    await SilentX.send_message(chat_id=LOG_CHANNEL, text=script.RESTART_TXT.format(temp.B_LINK, today, time_str))
+    try:
+        await SilentX.send_message(chat_id=LOG_CHANNEL, text=script.RESTART_TXT.format(temp.B_LINK, today, time_str))
+    except Exception as e:
+        logging.warning(f"Could not send restart notice to LOG_CHANNEL ({LOG_CHANNEL}): {e} - check the channel ID and that the bot is in the channel.")
     try:
         for admin in ADMINS:
             await SilentX.send_message(chat_id=admin, text=f"<b>๏[-ิ_•ิ]๏ {me.mention} Restarted ✅</code></b>")

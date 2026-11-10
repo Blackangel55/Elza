@@ -205,3 +205,26 @@ waited 2s for nothing before re-searching.
   to the old regex search on any error, so a missing text index cannot
   break searching. If searches are still slow after this, the next thing
   to check is the MongoDB Atlas tier/region and the collection size.
+
+## 14. /start not replying (2026-11-10)
+
+The deployed bot was running and healthy on Koyeb, but /start got no
+reply. Two code causes found and fixed:
+
+- One of the 15 welcome-photo URLs in `PICS` (`info.py`) was not a
+  file URL at all (`https://graph.org/-03-28-833`), so whenever
+  `random.choice` picked it, `reply_photo` raised and /start died with
+  no reply. The bad URL is removed.
+- `plugins/commands.py`: /start now falls back to sending the same
+  welcome text without the photo if `reply_photo` fails, so a dead
+  image link can never silence /start again.
+- `bot.py`: startup no longer dies if loading the banned list, creating
+  the DB indexes, or sending the restart notice to LOG_CHANNEL fails —
+  each now logs a warning and startup continues. Before this, any of
+  those three failing killed the bot before `idle()`, so it never came
+  online at all.
+
+Note: the first thing to check when /start is silent is that the
+message is going to the right bot — the running bot is @AMSearch2bot
+(see its Koyeb log line "started on AMSearch2bot") — in a private chat,
+not a group (in a group /start only flashes a sticker for 5 seconds).
