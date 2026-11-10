@@ -218,17 +218,6 @@ async def save_file(media):
         return True, 1
 
 async def backfill_added_on(batch_size=500):
-    """One-time backfill: stamp files saved before added_on existed.
-
-    Those rows have no added_on, so among themselves they sort in
-    arbitrary order even though search now sorts by (textScore,
-    added_on desc). This stamps the missing rows in insertion order
-    ($natural, oldest first) with increasing timestamps, newest last,
-    so the newest-first order covers them too. Idempotent: only rows
-    where added_on is missing are touched, so a later run is a no-op
-    (one count query). Runs in the background at startup; a failure
-    only logs a warning and never affects the bot.
-    """
     targets = [(db, "primary")]
     if MULTIPLE_DB:
         targets.append((db2, "secondary"))
@@ -261,14 +250,6 @@ async def backfill_added_on(batch_size=500):
             LOGGER.warning(f"added_on backfill ({label}) failed: {e}")
 
 def _text_search_terms(query: str):
-    """Terms for a MongoDB $text search, or None when $text can't help.
-
-    In $text, '-' means NOT and '"' starts a phrase, so both are stripped
-    along with other punctuation - the text index tokenises filenames on
-    those characters anyway. Returns None when no usable term is left
-    (stop-words only, single characters, ...); the caller then falls back
-    to the regex search.
-    """
     terms = re.sub(r'[^A-Za-z0-9 ]+', ' ', query or '')
     terms = re.sub(r'\s+', ' ', terms).strip()
     return terms or None
