@@ -28,26 +28,13 @@ botStartTime = time.time()
 
 pyrogram.utils.MIN_CHANNEL_ID = -1009147483647
 
-# NOTE: plugins are loaded exactly once, by Pyrogram itself, via
-# plugins={"root": "plugins"} in Lucia/Bot/__init__.py (SilentXBot).
-# Do NOT manually import plugins/*.py here as well - the old code did
-# that with importlib after SilentX.start(), which registered every
-# handler a second time (duplicate replies, double file indexing).
-
 async def SilentXBotz_start():
     print('Initalizing Your Bot!')
     await SilentX.start()
     bot_info = await SilentX.get_me()
     SilentX.username = bot_info.username
-    # ping_server() (Heroku keepalive) only runs when a real public URL
-    # is configured; see info.py - URL is "" without FQDN, and
-    # keepalive now skips in that case. The old threading ping_loop
-    # that hit http://0.0.0.0/ every 120s has been removed.
     if ON_HEROKU and URL:
         asyncio.create_task(ping_server())
-    # These three steps must never kill the whole bot: a wrong LOG_CHANNEL
-    # or a failing index used to crash startup right here, before idle(),
-    # so the bot never came online and /start got no reply at all.
     try:
         b_users, b_chats = await db.get_banned()
         temp.BANNED_USERS = b_users
@@ -92,10 +79,6 @@ async def SilentXBotz_start():
 
 if __name__ == '__main__':
     try:
-        # Use the SAME loop Pyrogram captured at import time (Client and
-        # Dispatcher call asyncio.get_event_loop() in __init__). asyncio.run()
-        # makes a new loop, so handler workers never run: bot connects, sends
-        # messages, but never answers any update.
         loop = asyncio.get_event_loop()
         loop.run_until_complete(SilentXBotz_start())
     except KeyboardInterrupt:
