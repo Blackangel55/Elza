@@ -255,6 +255,23 @@ def _text_search_terms(query: str):
     return terms or None
 
 
+# Words that carry no meaning on their own in a title: filenames often
+# drop them ("Odyssey 2026" for "The Odyssey 2026"), so they must never
+# be required for a file to match.
+_TITLE_STOP_WORDS = {"the", "a", "an", "and", "or", "of", "to", "in", "is", "for", "on", "with", "by", "at", "from", "as"}
+_YEAR_RE = re.compile(r'(19|20)\d\d')
+
+
+# Terms a file must contain: all query terms except stop words and the
+# year ($text is OR, so a year alone pulls in every file from that year).
+def _required_terms(query: str):
+    terms = re.sub(r'[^A-Za-z0-9 ]+', ' ', query or '').split()
+    return [t for t in terms
+            if len(t) >= 2
+            and t.lower() not in _TITLE_STOP_WORDS
+            and not _YEAR_RE.fullmatch(t)]
+
+
 async def get_search_results(chat_id, query, file_type=None, max_results=10, offset=0, filter=False):
     if chat_id is not None:
         settings = await get_settings(int(chat_id))
@@ -302,33 +319,42 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
         search_queries.append(query_no_special)
     text_terms = _text_search_terms(original_query)
     if text_terms:
-        text_filter = {'$text': {'$search': text_terms}}
+        # $text is OR, so a year pulls in every file from that year. First
+        # require the title words; fall back to plain $text if that finds nothing.
+        base_filter = {'$text': {'$search': text_terms}}
         if file_type:
-            text_filter['file_type'] = file_type
-        try:
-            if MULTIPLE_DB:
-                text_results = await asyncio.gather(
-                    Media.count_documents(text_filter),
-                    Media2.count_documents(text_filter),
-                    Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results),
-                    Media2.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results)
-                )
-                total_results = text_results[0] + text_results[1]
-                files = (text_results[2] + text_results[3])[:max_results]
-            else:
-                total_results = await Media.count_documents(text_filter)
-                files = await Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results)
-            if files:
-                logger.info(f"✅ Found {len(files)} results with $text search: '{text_terms}'")
-                next_offset = offset + len(files)
-                if next_offset >= total_results:
-                    next_offset = ''
-                result = (files, next_offset, total_results)
-                search_cache.set(cache_key, result)
-                return result
-            logger.info(f"❌ No $text results for: '{text_terms}' - falling back to regex")
-        except Exception as e:
-            logger.warning(f"$text search failed ({e}) - falling back to regex")
+            base_filter['file_type'] = file_type
+        text_filters = [base_filter]
+        required = _required_terms(original_query)
+        if required:
+            strict_filter = dict(base_filter)
+            strict_filter['$and'] = [{'file_name': re.compile(re.escape(t), re.IGNORECASE)} for t in required]
+            text_filters.insert(0, strict_filter)
+        for text_filter in text_filters:
+            try:
+                if MULTIPLE_DB:
+                    text_results = await asyncio.gather(
+                        Media.count_documents(text_filter),
+                        Media2.count_documents(text_filter),
+                        Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results),
+                        Media2.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results)
+                    )
+                    total_results = text_results[0] + text_results[1]
+                    files = (text_results[2] + text_results[3])[:max_results]
+                else:
+                    total_results = await Media.count_documents(text_filter)
+                    files = await Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results)
+                if files:
+                    logger.info(f"✅ Found {len(files)} results with $text search: '{text_terms}'")
+                    next_offset = offset + len(files)
+                    if next_offset >= total_results:
+                        next_offset = ''
+                    result = (files, next_offset, total_results)
+                    search_cache.set(cache_key, result)
+                    return result
+            except Exception as e:
+                logger.warning(f"$text search failed ({e}) - trying next")
+        logger.info(f"❌ No $text results for: '{text_terms}' - falling back to regex")
 
     files = []
     total_results = 0
