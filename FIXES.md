@@ -174,3 +174,34 @@ message, refer link text, 100-point DM) no longer mention it. Note:
 refer points now have no reward attached; remove the refer system too
 if it is not wanted. Verified: py_compile clean, zero references to
 premium/streaming in any `.py` file, TMDB and Malayalam intact.
+
+## 13. Search speed (2026-11-10)
+
+Searches were slow because every search scanned the whole files
+collection: the DB query is an unanchored regex, which no index can
+serve (the text index on `file_name` existed but was never used), and
+`count_documents` scanned it a second time — up to 3 query variants
+meant up to 6 full scans per search. On top of that the poster fetch
+(2-3 sequential TMDB calls) blocked the results, and a misspelled query
+waited 2s for nothing before re-searching.
+
+- `database/ia_filterdb.py`: `get_search_results` now tries a MongoDB
+  `$text` search first, which is served from the existing text index and
+  ranked by relevance (`textScore`). The old regex variants only run if
+  `$text` finds nothing (or the text index is missing), so caption-only
+  matches and odd queries still work, just slower. One behaviour change:
+  results are now ranked by relevance instead of newest-first.
+- `utils.py`: `tmdb_search` runs the movie and TV searches concurrently
+  instead of one after the other; `get_poster` results are cached for 1
+  hour (max 500 entries) since the same titles get searched repeatedly.
+- `plugins/pm_filter.py`: the poster fetch now starts before the DB
+  search and runs in parallel with it (the year then comes from the
+  query only, not the first result's file name); it is cancelled when a
+  search finds nothing, and a failed poster fetch shows results without
+  the poster instead of failing the search. The 2s sleep after an AI
+  spelling suggestion is gone — the suggestion stays visible while the
+  re-search runs and is removed once results are back.
+- Not verified against a live database here: the `$text` path falls back
+  to the old regex search on any error, so a missing text index cannot
+  break searching. If searches are still slow after this, the next thing
+  to check is the MongoDB Atlas tier/region and the collection size.

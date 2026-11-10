@@ -213,6 +213,20 @@ async def save_file(media):
         LOGGER.info(f'{file_name} Saved Successfully In {"Secondary" if use_secondary else "Primary"} Database')
         return True, 1
 
+def _text_search_terms(query: str):
+    """Terms for a MongoDB $text search, or None when $text can't help.
+
+    In $text, '-' means NOT and '"' starts a phrase, so both are stripped
+    along with other punctuation - the text index tokenises filenames on
+    those characters anyway. Returns None when no usable term is left
+    (stop-words only, single characters, ...); the caller then falls back
+    to the regex search.
+    """
+    terms = re.sub(r'[^A-Za-z0-9 ]+', ' ', query or '')
+    terms = re.sub(r'\s+', ' ', terms).strip()
+    return terms or None
+
+
 async def get_search_results(chat_id, query, file_type=None, max_results=10, offset=0, filter=False):
     if chat_id is not None:
         settings = await get_settings(int(chat_id))
@@ -258,6 +272,44 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
     query_no_special = SPACES_PATTERN.sub(' ', query_no_special).strip()
     if query_no_special and query_no_special not in search_queries:
         search_queries.append(query_no_special)
+
+    # FAST PATH: $text search uses the text index on file_name (created by
+    # Media.ensure_indexes() at startup). The regex search below cannot use
+    # any index - every attempt scans the whole collection, and
+    # count_documents scans it again - so one search could cost up to 6 full
+    # collection scans. $text serves matches from the index instead and
+    # ranks them by relevance. If it finds nothing (or the text index is
+    # missing) the regex search below still runs, so caption-only matches
+    # and odd queries keep working, just slower.
+    text_terms = _text_search_terms(original_query)
+    if text_terms:
+        text_filter = {'$text': {'$search': text_terms}}
+        if file_type:
+            text_filter['file_type'] = file_type
+        try:
+            if MULTIPLE_DB:
+                text_results = await asyncio.gather(
+                    Media.count_documents(text_filter),
+                    Media2.count_documents(text_filter),
+                    Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'})]).skip(offset).limit(max_results).to_list(length=max_results),
+                    Media2.find(text_filter, projection).sort([('score', {'$meta': 'textScore'})]).skip(offset).limit(max_results).to_list(length=max_results)
+                )
+                total_results = text_results[0] + text_results[1]
+                files = (text_results[2] + text_results[3])[:max_results]
+            else:
+                total_results = await Media.count_documents(text_filter)
+                files = await Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'})]).skip(offset).limit(max_results).to_list(length=max_results)
+            if files:
+                logger.info(f"✅ Found {len(files)} results with $text search: '{text_terms}'")
+                next_offset = offset + len(files)
+                if next_offset >= total_results:
+                    next_offset = ''
+                result = (files, next_offset, total_results)
+                search_cache.set(cache_key, result)
+                return result
+            logger.info(f"❌ No $text results for: '{text_terms}' - falling back to regex")
+        except Exception as e:
+            logger.warning(f"$text search failed ({e}) - falling back to regex")
 
     files = []
     total_results = 0

@@ -60,48 +60,34 @@ async def tmdb_search(query, year=None):
     if not TMDB_API_KEY:
         logger.warning("TMDB_API_KEY not set!")
         return None
-    
+
     session = await get_tmdb_session()
     results = []
-    
-    # Search Movies
-    try:
-        params = {
-            "api_key": TMDB_API_KEY,
-            "query": query,
-            "include_adult": "false"
-        }
-        if year:
-            params["year"] = year
-            
-        async with session.get(f"{TMDB_BASE_URL}/search/movie", params=params) as resp:
-            if resp.status == 200:
-                data = await resp.json()
-                for item in data.get("results", []):
-                    item["_type"] = "movie"
-                    results.append(item)
-    except Exception as e:
-        logger.error(f"TMDB movie search error: {e}")
-    
-    # Search TV Shows
-    try:
-        params = {
-            "api_key": TMDB_API_KEY,
-            "query": query,
-            "include_adult": "false"
-        }
-        if year:
-            params["first_air_date_year"] = year
-            
-        async with session.get(f"{TMDB_BASE_URL}/search/tv", params=params) as resp:
-            if resp.status == 200:
-                data = await resp.json()
-                for item in data.get("results", []):
-                    item["_type"] = "tv"
-                    results.append(item)
-    except Exception as e:
-        logger.error(f"TMDB TV search error: {e}")
-    
+
+    async def _search(endpoint, params, media_type):
+        try:
+            async with session.get(f"{TMDB_BASE_URL}{endpoint}", params=params) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    for item in data.get("results", []):
+                        item["_type"] = media_type
+                        results.append(item)
+        except Exception as e:
+            logger.error(f"TMDB {media_type} search error: {e}")
+
+    movie_params = {"api_key": TMDB_API_KEY, "query": query, "include_adult": "false"}
+    tv_params = {"api_key": TMDB_API_KEY, "query": query, "include_adult": "false"}
+    if year:
+        movie_params["year"] = year
+        tv_params["first_air_date_year"] = year
+
+    # Movie + TV searches are independent: run them together instead of
+    # one after the other (was 2 sequential TMDB round trips per search).
+    await asyncio.gather(
+        _search("/search/movie", movie_params, "movie"),
+        _search("/search/tv", tv_params, "tv"),
+    )
+
     # Sort by popularity
     results.sort(key=lambda x: x.get("popularity", 0), reverse=True)
     return results
@@ -157,6 +143,30 @@ async def tmdb_get_by_imdb_id(imdb_id):
 # ============================================
 # Main get_poster function (TMDB version)
 # ============================================
+# Poster cache: the same titles get searched over and over, and every
+# get_poster() call costs 2-3 TMDB round trips. Cache successful results
+# for an hour (max 500 entries, oldest dropped first).
+_poster_cache = {}
+_POSTER_CACHE_TTL = 3600
+
+def _poster_cache_get(key):
+    entry = _poster_cache.get(key)
+    if not entry:
+        return None
+    result, ts = entry
+    if datetime.now().timestamp() - ts > _POSTER_CACHE_TTL:
+        del _poster_cache[key]
+        return None
+    return result
+
+def _poster_cache_set(key, value):
+    if value is None:
+        return
+    if len(_poster_cache) >= 500:
+        _poster_cache.pop(next(iter(_poster_cache)))
+    _poster_cache[key] = (value, datetime.now().timestamp())
+
+
 async def get_poster(query, bulk=False, id=False, file=None):
     """
     Get movie/TV show info from TMDB
@@ -165,7 +175,12 @@ async def get_poster(query, bulk=False, id=False, file=None):
     if not TMDB_API_KEY:
         logger.warning("TMDB_API_KEY not configured!")
         return None
-    
+
+    cache_key = (query, bulk, id, file)
+    cached = _poster_cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     if not id:
         query = (query.strip()).lower()
         title = query
@@ -205,6 +220,7 @@ async def get_poster(query, bulk=False, id=False, file=None):
                 filtered = tv_results
         
         if bulk:
+            _poster_cache_set(cache_key, filtered)
             return filtered
         
         # Get the first result
@@ -291,7 +307,7 @@ async def get_poster(query, bulk=False, id=False, file=None):
     kind = "tv series" if media_type == "tv" else "movie"
     
     # Build return dict (same format as IMDB version)
-    return {
+    result = {
         'title': details.get("title") or details.get("name", "N/A"),
         'votes': details.get("vote_count", "N/A"),
         "aka": details.get("original_title") or details.get("original_name", "N/A"),
@@ -320,6 +336,8 @@ async def get_poster(query, bulk=False, id=False, file=None):
         'rating': str(details.get("vote_average", "N/A")),
         'url': f"https://www.themoviedb.org/{media_type}/{media_id}" if not imdb_id else f"https://www.imdb.com/title/{imdb_id}"
     }
+    _poster_cache_set(cache_key, result)
+    return result
 
 
 # ============================================

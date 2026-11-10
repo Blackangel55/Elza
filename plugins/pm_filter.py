@@ -1692,6 +1692,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
     
 async def auto_filter(client, msg, spoll=False):
     curr_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
+    poster_task = None
     if not spoll:
         message = msg
         if message.text.startswith("/"): return
@@ -1712,18 +1713,32 @@ async def auto_filter(client, msg, spoll=False):
             search = search.replace("-", " ")
             search = search.replace(":","")
             search = re.sub(r'\s+', ' ', search).strip()
-            files, offset, total_results = await get_search_results(message.chat.id ,search, offset=0, filter=True)
             settings = await get_settings(message.chat.id)
+            # Start the poster (TMDB) fetch now so it runs while the DB
+            # search runs, instead of blocking the results on it afterwards.
+            # file=None: the year then comes from the query only, not from
+            # the first result's file name.
+            poster_task = asyncio.create_task(get_poster(search)) if settings["imdb"] else None
+            files, offset, total_results = await get_search_results(message.chat.id ,search, offset=0, filter=True)
             if not files:
+                # No results: the poster fetch is pointless now, stop it.
+                if poster_task is not None:
+                    poster_task.cancel()
                 if settings["spell_check"]:
                     ai_sts = await m.edit('🤖 ᴘʟᴇᴀꜱᴇ ᴡᴀɪᴛ, ᴀɪ ɪꜱ ᴄʜᴇᴄᴋɪɴɢ ʏᴏᴜʀ ꜱᴘᴇʟʟɪɴɢ...')
                     is_misspelled = await ai_spell_check(chat_id = message.chat.id,wrong_name=search)
                     if is_misspelled:
                         await ai_sts.edit(f'<b>✅Aɪ Sᴜɢɢᴇsᴛᴇᴅ ᴍᴇ<code> {is_misspelled}</code> \nSᴏ Iᴍ Sᴇᴀʀᴄʜɪɴɢ ғᴏʀ <code>{is_misspelled}</code></b>')
-                        await asyncio.sleep(2)
                         message.text = is_misspelled
-                        await ai_sts.delete()
-                        return await auto_filter(client, message)
+                        # No sleep here: the old code waited 2s for nothing.
+                        # The suggestion stays up while the re-search runs.
+                        try:
+                            return await auto_filter(client, message)
+                        finally:
+                            try:
+                                await ai_sts.delete()
+                            except Exception:
+                                pass
                     await ai_sts.delete()
                     return await advantage_spell_chok(client, message)
         else:
@@ -1733,6 +1748,7 @@ async def auto_filter(client, msg, spoll=False):
         search, files, offset, total_results = spoll
         m=await message.reply_text(f'<b>Wᴀɪᴛ {message.from_user.mention} Sᴇᴀʀᴄʜɪɴɢ Yᴏᴜʀ Qᴜᴇʀʏ :<i>{search}...</i></b>', reply_to_message_id=message.id)
         settings = await get_settings(message.chat.id)
+        poster_task = asyncio.create_task(get_poster(search, file=(files[0]).file_name)) if settings["imdb"] and files else None
         await msg.message.delete()
     key = f"{message.chat.id}-{message.id}"
     FRESH[key] = search
@@ -1793,7 +1809,15 @@ async def auto_filter(client, msg, spoll=False):
         btn.append(
             [InlineKeyboardButton(text="↭ ɴᴏ ᴍᴏʀᴇ ᴘᴀɢᴇꜱ ᴀᴠᴀɪʟᴀʙʟᴇ ↭",callback_data="pages")]
         )
-    imdb = await get_poster(search, file=(files[0]).file_name) if settings["imdb"] else None
+    # Poster was fetched in parallel with the DB search (see above); just
+    # collect it here. If TMDB failed, show results without the poster
+    # instead of failing the whole search.
+    imdb = None
+    if poster_task is not None:
+        try:
+            imdb = await poster_task
+        except Exception as e:
+            logger.error(f"Poster fetch failed: {e}")
     cur_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
     time_difference = timedelta(hours=cur_time.hour, minutes=cur_time.minute, seconds=(cur_time.second+(cur_time.microsecond/1000000))) - timedelta(hours=curr_time.hour, minutes=curr_time.minute, seconds=(curr_time.second+(curr_time.microsecond/1000000)))
     remaining_seconds = "{:.2f}".format(time_difference.total_seconds())
