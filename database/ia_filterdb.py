@@ -130,6 +130,7 @@ class Media(Document):
     file_type = fields.StrField(allow_none=True)
     mime_type = fields.StrField(allow_none=True)
     caption = fields.StrField(allow_none=True)
+    added_on = fields.DateTimeField(allow_none=True)
     
     class Meta:
         indexes = (
@@ -149,6 +150,7 @@ class Media2(Document):
     file_type = fields.StrField(allow_none=True)
     mime_type = fields.StrField(allow_none=True)
     caption = fields.StrField(allow_none=True)
+    added_on = fields.DateTimeField(allow_none=True)
     
     class Meta:
         indexes = (
@@ -201,6 +203,7 @@ async def save_file(media):
             file_type=media.file_type,
             mime_type=media.mime_type,
             caption=media.caption.html if media.caption else None,
+            added_on=datetime.utcnow(),
         )
         await file.commit()
     except DuplicateKeyError:
@@ -291,14 +294,14 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
                 text_results = await asyncio.gather(
                     Media.count_documents(text_filter),
                     Media2.count_documents(text_filter),
-                    Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'})]).skip(offset).limit(max_results).to_list(length=max_results),
-                    Media2.find(text_filter, projection).sort([('score', {'$meta': 'textScore'})]).skip(offset).limit(max_results).to_list(length=max_results)
+                    Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results),
+                    Media2.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results)
                 )
                 total_results = text_results[0] + text_results[1]
                 files = (text_results[2] + text_results[3])[:max_results]
             else:
                 total_results = await Media.count_documents(text_filter)
-                files = await Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'})]).skip(offset).limit(max_results).to_list(length=max_results)
+                files = await Media.find(text_filter, projection).sort([('score', {'$meta': 'textScore'}), ('added_on', -1)]).skip(offset).limit(max_results).to_list(length=max_results)
             if files:
                 logger.info(f"✅ Found {len(files)} results with $text search: '{text_terms}'")
                 next_offset = offset + len(files)
