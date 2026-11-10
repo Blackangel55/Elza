@@ -54,6 +54,8 @@ async def media(bot, message):
         pass
 
 async def send_movie_update(bot, file_name, caption):
+    if not MOVIE_UPDATE_CHANNEL:
+        return  # MOVIE_UPDATE_CHANNEL not set; skip the update post
     try:
         file_name = await movie_name_format(file_name)
         caption = await movie_name_format(caption)

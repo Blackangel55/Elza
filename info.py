@@ -14,10 +14,36 @@ def is_enabled(value, default):
         return default
 
 
+
+def _required(name):
+    """Return a required env var, or raise a clear error naming it.
+
+    The old code did int(environ.get('API_ID', '')) which crashed with a
+    bare ValueError: invalid literal for int() with base 10: '' - no clue
+    which variable was missing. This names it.
+    """
+    value = environ.get(name, "").strip()
+    if not value:
+        raise ValueError(f"Missing required environment variable: {name} (see example.env)")
+    return value
+
+
+def _int_env(name, default=None, required=False):
+    """Parse an optional int env var; None when unset, never int('')."""
+    raw = environ.get(name, "")
+    if raw is None or str(raw).strip() == "":
+        if required:
+            raise ValueError(f"Missing required environment variable: {name} (see example.env)")
+        return default
+    try:
+        return int(str(raw).strip())
+    except ValueError:
+        raise ValueError(f"Environment variable {name} must be an integer, got: {raw!r}")
+
 SESSION = environ.get('SESSION', 'media_search')
-API_ID = int(environ.get('API_ID', ''))
-API_HASH = environ.get('API_HASH', '')
-BOT_TOKEN = environ.get('BOT_TOKEN', "")
+API_ID = int(_required('API_ID'))
+API_HASH = _required('API_HASH')
+BOT_TOKEN = _required('BOT_TOKEN')
 
 CACHE_TIME = int(environ.get('CACHE_TIME', 300))
 USE_CAPTION_FILTER = bool(environ.get('USE_CAPTION_FILTER', True))
@@ -30,10 +56,10 @@ FSUB_IMG = (environ.get('FSUB_PICS', 'https://i.ibb.co/3Y8t1Cxz/x.jpg')).split()
 
 ADMINS = [int(admin) if id_pattern.search(admin) else admin for admin in environ.get('ADMINS', '').split()] 
 CHANNELS = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('CHANNELS', '').split()]
-LOG_CHANNEL = int(environ.get('LOG_CHANNEL', ''))  
-BIN_CHANNEL = int(environ.get('BIN_CHANNEL', '-1001583883335'))  
-MOVIE_UPDATE_CHANNEL = int(environ.get('MOVIE_UPDATE_CHANNEL', '-1001583883335'))  
-PREMIUM_LOGS = int(environ.get('PREMIUM_LOGS', '-1001583883335')) 
+LOG_CHANNEL = _int_env('LOG_CHANNEL', required=True)  
+BIN_CHANNEL = _int_env('BIN_CHANNEL', required=True)  
+MOVIE_UPDATE_CHANNEL = _int_env('MOVIE_UPDATE_CHANNEL')  # None = don't post movie updates  
+PREMIUM_LOGS = _int_env('PREMIUM_LOGS', LOG_CHANNEL)  # falls back to LOG_CHANNEL 
 auth_grp = environ.get('AUTH_GROUP')
 AUTH_GROUPS = [int(ch) for ch in auth_grp.split()] if auth_grp else None
 reqst_channel = environ.get('REQST_CHANNEL_ID', '') 
@@ -41,7 +67,7 @@ REQST_CHANNEL = int(reqst_channel) if reqst_channel and id_pattern.search(reqst_
 support_chat_id = environ.get('SUPPORT_CHAT_ID', '') 
 SUPPORT_CHAT_ID = int(support_chat_id) if support_chat_id and id_pattern.search(support_chat_id) else None
 
-DATABASE_URI = environ.get('DATABASE_URI', "")
+DATABASE_URI = _required('DATABASE_URI')
 DATABASE_NAME = environ.get('DATABASE_NAME', "")
 COLLECTION_NAME = environ.get('COLLECTION_NAME', '')
 
@@ -50,47 +76,41 @@ MULTIPLE_DB = is_enabled(os.environ.get('MULTIPLE_DB', "False"), False) # Type T
 DATABASE_URI2 = environ.get('DATABASE_URI2', "")
 DB_CHANGE_LIMIT = int(environ.get('DB_CHANGE_LIMIT', "432")) 
 
-GRP_LNK = environ.get('GRP_LNK', 'https://t.me/+ix9P65l4kPUwYWM1')
-CHNL_LNK = environ.get('CHNL_LNK', 'https://t.me/AM_FILMS')
-OWNER_LNK = environ.get('OWNER_LNK', 'https://t.me/GUARDIANff')
-UPDATE_CHANNEL_LNK = environ.get('UPDATE_CHANNEL_LNK', 'https://t.me/+NUkifqTOBq40OTQ1')
+GRP_LNK = environ.get('GRP_LNK', '')
+CHNL_LNK = environ.get('CHNL_LNK', '')
+OWNER_LNK = environ.get('OWNER_LNK', '')
+UPDATE_CHANNEL_LNK = environ.get('UPDATE_CHANNEL_LNK', '')
 
 AUTH_CHANNEL = environ.get("AUTH_CHANNEL", "") # add multiple channels here, separated by single space
 AUTH_CHANNEL = [int(ch) for ch in AUTH_CHANNEL.strip().split()] if AUTH_CHANNEL else []
 AUTH_REQ_CHANNEL = environ.get('AUTH_REQ_CHANNEL', '') # add multiple channels here, separated by single space
 AUTH_REQ_CHANNEL = [int(ch) for ch in AUTH_REQ_CHANNEL.strip().split()] if AUTH_REQ_CHANNEL else []
-DELETE_CHANNELS = [int(dch) if id_pattern.search(dch) else dch for dch in environ.get('DELETE_CHANNELS', '-1001826416677').split()]
+DELETE_CHANNELS = [int(dch) if id_pattern.search(dch) else dch for dch in environ.get('DELETE_CHANNELS', '').split()]
 
-IS_VERIFY = is_enabled('IS_VERIFY', False)
-LOG_VR_CHANNEL = int(environ.get('LOG_VR_CHANNEL', '-1001583883335'))
-LOG_API_CHANNEL = int(environ.get('LOG_API_CHANNEL', '-1001583883335'))
+IS_VERIFY = is_enabled(environ.get('IS_VERIFY', 'False'), False)
+LOG_VR_CHANNEL = _int_env('LOG_VR_CHANNEL', LOG_CHANNEL)  # falls back to LOG_CHANNEL
+LOG_API_CHANNEL = _int_env('LOG_API_CHANNEL', LOG_CHANNEL)  # falls back to LOG_CHANNEL
 VERIFY_IMG = environ.get("VERIFY_IMG", "https://telegra.ph/file/9ecc5d6e4df5b83424896.jpg")
 
-TUTORIAL = environ.get("TUTORIAL", "https://t.me/am_films")
-TUTORIAL_2 = environ.get("TUTORIAL_2", "https://t.me/")
-TUTORIAL_3 = environ.get("TUTORIAL_3", "https://t.me/")
+TUTORIAL = environ.get("TUTORIAL", "")
+TUTORIAL_2 = environ.get("TUTORIAL_2", "")
+TUTORIAL_3 = environ.get("TUTORIAL_3", "")
 
-SHORTENER_API = environ.get("SHORTENER_API", "")
-SHORTENER_WEBSITE = environ.get("SHORTENER_WEBSITE", "")
 
-SHORTENER_API2 = environ.get("SHORTENER_API2", "")
-SHORTENER_WEBSITE2 = environ.get("SHORTENER_WEBSITE2", "")
 
-SHORTENER_API3 = environ.get("SHORTENER_API3", "")
-SHORTENER_WEBSITE3 = environ.get("SHORTENER_WEBSITE3", "")
 
 TWO_VERIFY_GAP = int(environ.get('TWO_VERIFY_GAP', "1200"))
 THREE_VERIFY_GAP = int(environ.get('THREE_VERIFY_GAP', "54000"))
 
-MOVIE_UPDATE_NOTIFICATION = bool(environ.get("MOVIE_UPDATE_NOTIFICATION", False))
-NO_RESULTS_MSG = bool(environ.get("NO_RESULTS_MSG", True))
+MOVIE_UPDATE_NOTIFICATION = is_enabled(environ.get('MOVIE_UPDATE_NOTIFICATION', 'False'), False)
+NO_RESULTS_MSG = is_enabled(environ.get('NO_RESULTS_MSG', 'True'), True)
 MAX_B_TN = environ.get("MAX_B_TN", "10")
 MAX_BTN = is_enabled((environ.get('MAX_BTN', "True")), True)
-PORT = environ.get("PORT", "8080")
+PORT = _int_env("PORT", 8080)
 MSG_ALRT = environ.get('MSG_ALRT', 'Share & Support Us ♥️')
-SUPPORT_CHAT = environ.get('SUPPORT_CHAT', 'https://t.me/+NUkifqTOBq40OTQ1') 
+SUPPORT_CHAT = environ.get('SUPPORT_CHAT', '')
+SUPPORT_LNK = environ.get('SUPPORT_LNK', OWNER_LNK)  # Support button URL; set this, don't hardcode it 
 P_TTI_SHOW_OFF = is_enabled((environ.get('P_TTI_SHOW_OFF', "True")), False)
-
 # ==========================================
 # TMDB & IMDB Configuration
 # ==========================================
@@ -110,42 +130,38 @@ INDEX_REQ_CHANNEL = int(environ.get('INDEX_REQ_CHANNEL', LOG_CHANNEL))
 FILE_STORE_CHANNEL = [int(ch) for ch in (environ.get('FILE_STORE_CHANNEL', '')).split()]
 MELCOW_NEW_USERS = is_enabled((environ.get('MELCOW_NEW_USERS', "False")), False)
 PROTECT_CONTENT = is_enabled((environ.get('PROTECT_CONTENT', "False")), True)
-PM_SEARCH = bool(environ.get('PM_SEARCH', True)) 
-EMOJI_MODE = bool(environ.get('EMOJI_MODE', False)) 
-PAID_STREAM = bool(environ.get('PAID_STREAM', False)) 
+PM_SEARCH = is_enabled(environ.get('PM_SEARCH', 'True'), True) 
+EMOJI_MODE = is_enabled(environ.get('EMOJI_MODE', 'False'), False) 
 
 LANGUAGES = ["malayalam", "", "tamil", "", "english", "", "hindi", "", "telugu", "", "kannada", "", "gujarati", "", "marathi", "", "punjabi", ""]
 QUALITIES = ["240p", "", "360P", "", "480P", "", "540P", "", "720P", "", "1080P", "", "1440P", "", "2160P", ""]
 SEASONS = ["s01" , "s02" , "s03" , "s04", "s05" , "s06" , "s07" , "s08" , "s09" , "s10"]
 
-STREAM_MODE = bool(environ.get('STREAM_MODE', False))
 
-NO_PORT = bool(environ.get('NO_PORT', False))
+NO_PORT = is_enabled(environ.get('NO_PORT', 'False'), False)
+HAS_SSL = is_enabled(getenv('HAS_SSL', 'False'), False)
 APP_NAME = None
-if 'DYNO' in environ:
-    ON_HEROKU = True
+ON_HEROKU = 'DYNO' in environ
+if ON_HEROKU:
     APP_NAME = environ.get('APP_NAME')
-else:
-    ON_HEROKU = False
 BIND_ADRESS = str(getenv('WEB_SERVER_BIND_ADDRESS', '0.0.0.0'))
-FQDN = str(getenv('FQDN', BIND_ADRESS)) if not ON_HEROKU or getenv('FQDN') else APP_NAME+'.herokuapp.com'
-URL = "https://{}/".format(FQDN) if ON_HEROKU or NO_PORT else "https://{}/".format(FQDN, PORT)
+# Public base URL for stream links and the keepalive ping. "" when not
+# configured - never http://0.0.0.0/, which the old ping_loop hit.
+if ON_HEROKU and APP_NAME:
+    FQDN = APP_NAME + '.herokuapp.com'
+else:
+    FQDN = str(getenv('FQDN', '') or '')
+if FQDN:
+    URL = ("https://" if HAS_SSL or ON_HEROKU or NO_PORT else "http://") + FQDN + "/"
+else:
+    URL = ""
+
 SLEEP_THRESHOLD = int(environ.get('SLEEP_THRESHOLD', '60'))
 WORKERS = int(environ.get('WORKERS', '4'))
 SESSION_NAME = str(environ.get('SESSION_NAME', 'SilentXBotz'))
 MULTI_CLIENT = False
 name = str(environ.get('name', 'SilentX'))
 PING_INTERVAL = int(environ.get("PING_INTERVAL", "1200"))  # 20 minutes
-if 'DYNO' in environ:
-    ON_HEROKU = True
-    APP_NAME = str(getenv('APP_NAME'))
-else:
-    ON_HEROKU = False
-HAS_SSL = bool(getenv('HAS_SSL', False))
-if HAS_SSL:
-    URL = "https://{}/".format(FQDN)
-else:
-    URL = "http://{}/".format(FQDN)
 
 
 REACTIONS = ["🤝", "😇", "🤗", "😍", "👍", "🎅", "😐", "🥰", "🤩", "😱", "🤣", "😘", "👏", "😛", "😈", "🎉", "⚡️", "🫡", "🤓", "😎", "🏆", "🔥", "🤭", "🌚", "🆒", "👻", "😁"]

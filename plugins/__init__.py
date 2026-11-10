@@ -3,7 +3,7 @@ from .route import routes
 from asyncio import sleep 
 from datetime import datetime, timedelta
 from database.users_chats_db import db
-from info import PREMIUM_LOGS, URL
+from info import PREMIUM_LOGS
 import aiohttp
 import asyncio
 import logging
@@ -35,10 +35,11 @@ async def check_expired_premium(client):
                     user_id,
                     f"<b>ʜᴇʏ {tg_user.mention},\n\nʏᴏᴜʀ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇss ʜᴀs ᴇxᴘɪʀᴇᴅ.\n\nTᴀᴘ /plan ꜰᴏʀ ʀᴇɴᴇᴡᴀʟ ᴏᴘᴛɪᴏɴs.</b>"
                 )
-                await client.send_message(
-                    PREMIUM_LOGS,
-                    f"<b>#Premium_Expired\nUser: {tg_user.mention}\nID: <code>{user_id}</code></b>"
-                )
+                if PREMIUM_LOGS:
+                    await client.send_message(
+                        PREMIUM_LOGS,
+                        f"<b>#Premium_Expired\nUser: {tg_user.mention}\nID: <code>{user_id}</code></b>"
+                    )
             except Exception as e:
                 print(f"[EXPIRED ERROR] {e}")
             await sleep(0.5)
@@ -52,11 +53,12 @@ async def check_expired_premium(client):
                         user_id,
                         f"<b>ʜᴇʏ {tg_user.mention},\n\nʏᴏᴜʀ ᴘʀᴇᴍɪᴜᴍ ᴡɪʟʟ ᴇxᴘɪʀᴇ ɪɴ {label}.\nTᴀᴘ /plan ᴛᴏ ʀᴇɴᴇᴡ ɴᴏᴡ!</b>"
                     )
-                    await client.send_message(
-                        PREMIUM_LOGS,
-                        f"<b>#Reminder ({label})\nUser: {tg_user.mention}\nID: <code>{user_id}</code></b>"
-                    )
+                    if PREMIUM_LOGS:
+                        await client.send_message(
+                            PREMIUM_LOGS,
+                            f"<b>#Reminder ({label})\nUser: {tg_user.mention}\nID: <code>{user_id}</code></b>"
+                        )
                 except Exception as e:
                     print(f"[REMINDER ERROR] {e}")
                 await sleep(0.5)
-        await sleep(1)
+        await sleep(60)  # was sleep(1): 2 Mongo queries/second, forever

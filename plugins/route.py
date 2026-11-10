@@ -19,11 +19,11 @@ routes = web.RouteTableDef()
 
 @routes.get("/", allow_head=True)
 async def root_route_handler(request):
-    return web.json_response("Telegram - @SilentXBotz")
+    return web.json_response("Elza Filter Bot")
 
 
 @routes.get(r"/watch/{path:\S+}", allow_head=True)
-async def stream_handler(request: web.Request):
+async def watch_handler(request: web.Request):
     try:
         path = request.match_info["path"]
         match = re.search(r"^([a-zA-Z0-9_-]{6})(\d+)$", path)
@@ -45,7 +45,7 @@ async def stream_handler(request: web.Request):
         raise web.HTTPInternalServerError(text="An internal error has occurred.")
 
 @routes.get(r"/{path:\S+}", allow_head=True)
-async def stream_handler(request: web.Request):
+async def download_handler(request: web.Request):
     try:
         path = request.match_info["path"]
         match = re.search(r"^([a-zA-Z0-9_-]{6})(\d+)$", path)

@@ -5,6 +5,9 @@ import traceback
 from info import *
 
 async def ping_server():
+    if not URL:
+        logging.info("Keepalive disabled: no FQDN configured, nothing to ping.")
+        return
     sleep_time = PING_INTERVAL
     while True:
         await asyncio.sleep(sleep_time)

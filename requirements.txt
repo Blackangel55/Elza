@@ -7,12 +7,9 @@ umongo
 requests
 bs4
 aiohttp
-shortzy
 datetime
 pytz
-opencv-python-headless==4.8.1.78
 python-dotenv==0.21.1
-speedtest
 humanize
 Pillow
 psutil
@@ -23,7 +20,6 @@ wget
 aiofiles
 dnspython==2.6.1
 python-decouple
-ffmpeg-python==0.2.0
 jinja2
 fuzzywuzzy
 python-Levenshtein==0.21.0

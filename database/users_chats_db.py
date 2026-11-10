@@ -139,12 +139,6 @@ class Database:
             'tutorial': TUTORIAL,
             'tutorial_2': TUTORIAL_2,
             'tutorial_3': TUTORIAL_3,
-            'shortner': SHORTENER_WEBSITE,
-            'api': SHORTENER_API,
-            'shortner_two': SHORTENER_WEBSITE2,
-            'api_two': SHORTENER_API2,
-            'shortner_three': SHORTENER_WEBSITE3,
-            'api_three': SHORTENER_API3,
             'is_verify': IS_VERIFY,
             'verify_time': TWO_VERIFY_GAP,
             'third_verify_time': THREE_VERIFY_GAP,
@@ -241,7 +235,7 @@ class Database:
         total_seconds = time_diff.total_seconds()
         return total_seconds <= seconds_since_midnight
 
-    async def use_second_shortener(self, user_id, time):
+    async def use_second_verify(self, user_id, time):
         user = await self.get_notcopy_user(user_id)
         if not user.get("second_time_verified"):
             ist_timezone = pytz.timezone('Asia/Kolkata')
@@ -263,7 +257,7 @@ class Database:
                 return second_time < pastDate
         return False
 
-    async def use_third_shortener(self, user_id, time):
+    async def use_third_verify(self, user_id, time):
         user = await self.get_notcopy_user(user_id)
         if not user.get("third_time_verified"):
             ist_timezone = pytz.timezone('Asia/Kolkata')
@@ -330,13 +324,16 @@ class Database:
 
     # Premium expired reminder ( This Code Modified By @BOT_OWNER26)
     async def get_expiring_soon(self, label, delta):
+        # FIX: the old query only matched users expiring in a 60-second
+        # window around now+delta, so the checker had to poll every
+        # second or reminders were silently missed. Now it matches
+        # anyone expiring between now and now+delta; the reminder flag
+        # (set below) still prevents duplicate reminders, so polling
+        # every 60s in plugins/__init__.py is safe.
         reminder_key = f"reminder_{label}_sent"
         now = datetime.datetime.utcnow()
-        target_time = now + delta
-        window = timedelta(seconds=30)
-
-        start_range = target_time - window
-        end_range = target_time + window
+        start_range = now
+        end_range = now + delta
 
         reminder_users = []
         cursor = self.users.find({

@@ -1,14 +1,24 @@
-version: "3.8"
 services:
-   worker:
+  worker:
     build: .
+    restart: unless-stopped
     environment:
-      BOT_TOKEN: $BOT_TOKEN
-      API_ID: $API_ID
-      API_HASH: $API_HASH
-      CHANNELS: $CHANNELS
-      ADMINS: $ADMINS
-      LOG_CHANNEL: $LOG_CHANNEL
-      DATABASE_NAME: $DATABASE_NAME
-      DATABASE_URI: $DATABASE_URI
-      HEROKU_API_KEY: $HEROKU_API_KEY
+      BOT_TOKEN: ${BOT_TOKEN}
+      API_ID: ${API_ID}
+      API_HASH: ${API_HASH}
+      ADMINS: ${ADMINS}
+      CHANNELS: ${CHANNELS}
+      LOG_CHANNEL: ${LOG_CHANNEL}
+      BIN_CHANNEL: ${BIN_CHANNEL}
+      DATABASE_URI: ${DATABASE_URI}
+      DATABASE_NAME: ${DATABASE_NAME}
+      COLLECTION_NAME: ${COLLECTION_NAME}
+      AUTH_CHANNEL: ${AUTH_CHANNEL}
+      SUPPORT_LNK: ${SUPPORT_LNK}
+      OWNER_LNK: ${OWNER_LNK}
+      CHNL_LNK: ${CHNL_LNK}
+      GRP_LNK: ${GRP_LNK}
+      FQDN: ${FQDN}
+      PORT: ${PORT:-8080}
+    ports:
+      - "${PORT:-8080}:8080"

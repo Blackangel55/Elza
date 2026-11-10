@@ -152,7 +152,7 @@ async def next_page(bot, query):
                 ]
             )
             btn.insert(1, [
-		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=f"https://t.me/AM_FILMS"),
+		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=SUPPORT_LNK),
                 InlineKeyboardButton("📥 Sᴇɴᴅ Aʟʟ 📥", callback_data=f"sendfiles#{key}")
            
             ])
@@ -346,7 +346,7 @@ async def filter_qualities_cb_handler(client: Client, query: CallbackQuery):
                 ]
             )
             btn.insert(1, [
-		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=f"https://t.me/AM_FILMS"),
+		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=SUPPORT_LNK),
                 InlineKeyboardButton("📥 Sᴇɴᴅ Aʟʟ 📥", callback_data=f"sendfiles#{key}")
            
             ])
@@ -361,7 +361,7 @@ async def filter_qualities_cb_handler(client: Client, query: CallbackQuery):
                 ]
             )
             btn.insert(1, [
-		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=f"https://t.me/AM_FILMS"),
+		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=SUPPORT_LNK),
                 InlineKeyboardButton("📥 Sᴇɴᴅ Aʟʟ 📥", callback_data=f"sendfiles#{key}")
            
             ])
@@ -499,7 +499,7 @@ async def filter_languages_cb_handler(client: Client, query: CallbackQuery):
                 ]
             )
             btn.insert(1, [
-		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=f"https://t.me/AM_FILMS"),
+		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=SUPPORT_LNK),
                 InlineKeyboardButton("📥 Sᴇɴᴅ Aʟʟ 📥", callback_data=f"sendfiles#{key}")
             
             ])
@@ -513,7 +513,7 @@ async def filter_languages_cb_handler(client: Client, query: CallbackQuery):
                 ]
             )
             btn.insert(1, [
-		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=f"https://t.me/AM_FILMS"),
+		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=SUPPORT_LNK),
                 InlineKeyboardButton("📥 Sᴇɴᴅ Aʟʟ 📥", callback_data=f"sendfiles#{key}")            
             ])
         if n_offset != "":
@@ -651,7 +651,7 @@ async def filter_season_cb_handler(client: Client, query: CallbackQuery):
                 ]
             )
             btn.insert(1, [
-		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=f"https://t.me/AM_FILMS"),
+		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=SUPPORT_LNK),
                 InlineKeyboardButton("📥 Sᴇɴᴅ Aʟʟ 📥", callback_data=f"sendfiles#{key}")
 
             ])
@@ -665,7 +665,7 @@ async def filter_season_cb_handler(client: Client, query: CallbackQuery):
                 ]
             )
             btn.insert(1, [
-		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=f"https://t.me/AM_FILMS"),
+		InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=SUPPORT_LNK),
                 InlineKeyboardButton("📥 Sᴇɴᴅ Aʟʟ 📥", callback_data=f"sendfiles#{key}")            
             ])
         if n_offset != "":
@@ -1304,43 +1304,6 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.answer("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ ᴘᴇʀᴍɪssɪᴏɴ ᴛᴏ sᴇᴇ ᴛʜɪꜱ ❌", show_alert=True)
 
     
-    elif lazyData.startswith("streamfile"):
-        _, file_id = lazyData.split(":")
-        try:
-            user_id = query.from_user.id
-            is_premium_user = await db.has_premium_access(user_id)
-            if PAID_STREAM and not is_premium_user:
-                premiumbtn = [[InlineKeyboardButton("𝖡𝗎𝗒 𝖯𝗋𝖾𝗆𝗂𝗎𝗆 ♻️", callback_data='buy')]]
-                await query.answer("<b>📌 ᴛʜɪꜱ ꜰᴇᴀᴛᴜʀᴇ ɪꜱ ᴏɴʟʏ ꜰᴏʀ ᴘʀᴇᴍɪᴜᴍ ᴜꜱᴇʀꜱ</b>", show_alert=True)
-                await query.message.reply("<b>📌 ᴛʜɪꜱ ꜰᴇᴀᴛᴜʀᴇ ɪꜱ ᴏɴʟʏ ꜰᴏʀ ᴘʀᴇᴍɪᴜᴍ ᴜꜱᴇʀꜱ. ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ ᴛᴏ ᴀᴄᴄᴇꜱꜱ ᴛʜɪꜱ ꜰᴇᴀᴛᴜʀᴇ ✅</b>", reply_markup=InlineKeyboardMarkup(premiumbtn))
-                return
-            username =  query.from_user.mention 
-            silent_msg = await client.send_cached_media(
-                chat_id=BIN_CHANNEL,
-                file_id=file_id,
-            )
-            fileName = {quote_plus(get_name(silent_msg))}
-            silent_stream = f"{URL}watch/{str(silent_msg.id)}/{quote_plus(get_name(silent_msg))}?hash={get_hash(silent_msg)}"
-            silent_download = f"{URL}{str(silent_msg.id)}/{quote_plus(get_name(silent_msg))}?hash={get_hash(silent_msg)}"
-            btn= [[
-                InlineKeyboardButton("𝖲𝗍𝗋𝖾𝖺𝗆", url=silent_stream),
-                InlineKeyboardButton("𝖣𝗈𝗐𝗇𝗅𝗈𝖺𝖽", url=silent_download)        
-	    ]]
-            await query.edit_message_reply_markup(
-                reply_markup=InlineKeyboardMarkup(btn)
-	    )
-            await silent_msg.reply_text(
-                text=f"•• ʟɪɴᴋ ɢᴇɴᴇʀᴀᴛᴇᴅ ꜰᴏʀ ɪᴅ #{user_id} \n•• ᴜꜱᴇʀɴᴀᴍᴇ : {username} \n\n•• ᖴᎥᒪᗴ Nᗩᗰᗴ : {fileName}",
-                quote=True,
-                disable_web_page_preview=True,
-                reply_markup=InlineKeyboardMarkup(btn)
-	    )                
-        except Exception as e:
-            print(e)
-            await query.answer(f"⚠️ SOMETHING WENT WRONG \n\n{e}", show_alert=True)
-            return
-           
-    
     elif query.data == "pagesn1":
         await query.answer(text=script.PAGE_TXT, show_alert=True)
 
@@ -1536,14 +1499,13 @@ async def cb_handler(client: Client, query: CallbackQuery):
         btn = [[
             InlineKeyboardButton(f'ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ: {"ᴏɴ" if verify_status else "ᴏꜰꜰ"}', callback_data=f'toggleverify#is_verify#{verify_status}#{grp_id}'),
 	],[
-            InlineKeyboardButton('ꜱʜᴏʀᴛɴᴇʀ', callback_data=f'changeshortner#{grp_id}'),
             InlineKeyboardButton('ᴛɪᴍᴇ', callback_data=f'changetime#{grp_id}')
 	],[
             InlineKeyboardButton('ᴛᴜᴛᴏʀɪᴀʟ', callback_data=f'changetutorial#{grp_id}')
         ],[
             InlineKeyboardButton('⇋ ʙᴀᴄᴋ ⇋', callback_data=f'grp_pm#{grp_id}')
 	]]    
-        await query.message.edit("<b>ᴀᴅᴠᴀɴᴄᴇ ꜱᴇᴛᴛɪɴɢꜱ ᴍᴏᴅᴇ 📳\n\nʏᴏᴜ ᴄᴀɴ ᴄᴜꜱᴛᴏᴍɪᴢᴇᴅ ꜱʜᴏʀᴛɴᴇʀ ᴠᴀʟᴜᴇꜱ ᴀɴᴅ ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ ᴛɪᴍᴇ ɢᴀᴘ ꜰʀᴏᴍ ʜᴇʀᴇ ✅\nᴄʜᴏᴏꜱᴇ ꜰʀᴏᴍ ʙᴇʟᴏᴡ 👇</b>", reply_markup=InlineKeyboardMarkup(btn))
+        await query.message.edit("<b>ᴀᴅᴠᴀɴᴄᴇ ꜱᴇᴛᴛɪɴɢꜱ ᴍᴏᴅᴇ 📳\n\nʏᴏᴜ ᴄᴀɴ ᴄᴜꜱᴛᴏᴍɪᴢᴇᴅ ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ ᴛɪᴍᴇ ɢᴀᴘ ꜰʀᴏᴍ ʜᴇʀᴇ ✅\nᴄʜᴏᴏꜱᴇ ꜰʀᴏᴍ ʙᴇʟᴏᴡ 👇</b>", reply_markup=InlineKeyboardMarkup(btn))
 	    
 
     elif query.data.startswith("log_setgs"):
@@ -1649,84 +1611,15 @@ async def cb_handler(client: Client, query: CallbackQuery):
         btn = [[
             InlineKeyboardButton(f'ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ: {"ᴏɴ" if verify_status else "ᴏꜰꜰ"}', callback_data=f'toggleverify#is_verify#{verify_status}#{grp_id}'),
 	],[
-            InlineKeyboardButton('ꜱʜᴏʀᴛɴᴇʀ', callback_data=f'changeshortner#{grp_id}'),
             InlineKeyboardButton('ᴛɪᴍᴇ', callback_data=f'changetime#{grp_id}')
 	],[
             InlineKeyboardButton('ᴛᴜᴛᴏʀɪᴀʟ', callback_data=f'changetutorial#{grp_id}')
         ],[
             InlineKeyboardButton('⇋ ʙᴀᴄᴋ ⇋', callback_data=f'grp_pm#{grp_id}')
 	]]    
-        await query.message.edit("<b>ᴀᴅᴠᴀɴᴄᴇ ꜱᴇᴛᴛɪɴɢꜱ ᴍᴏᴅᴇ 📳\n\nʏᴏᴜ ᴄᴀɴ ᴄᴜꜱᴛᴏᴍɪᴢᴇᴅ ꜱʜᴏʀᴛɴᴇʀ ᴠᴀʟᴜᴇꜱ ᴀɴᴅ ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ ᴛɪᴍᴇ ɢᴀᴘ ꜰʀᴏᴍ ʜᴇʀᴇ ✅\nᴄʜᴏᴏꜱᴇ ꜰʀᴏᴍ ʙᴇʟᴏᴡ 👇</b>", reply_markup=InlineKeyboardMarkup(btn))
+        await query.message.edit("<b>ᴀᴅᴠᴀɴᴄᴇ ꜱᴇᴛᴛɪɴɢꜱ ᴍᴏᴅᴇ 📳\n\nʏᴏᴜ ᴄᴀɴ ᴄᴜꜱᴛᴏᴍɪᴢᴇᴅ ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ ᴛɪᴍᴇ ɢᴀᴘ ꜰʀᴏᴍ ʜᴇʀᴇ ✅\nᴄʜᴏᴏꜱᴇ ꜰʀᴏᴍ ʙᴇʟᴏᴡ 👇</b>", reply_markup=InlineKeyboardMarkup(btn))
 
 
-    elif query.data.startswith("changeshortner"):
-        _, grp_id = query.data.split("#")
-        user_id = query.from_user.id if query.from_user else None
-        if not await is_check_admin(client, int(grp_id), user_id):
-            return await query.answer("<b>ɴᴇᴇᴅ ᴛᴏ ʙᴇ ᴀᴅᴍɪɴ ᴛᴏ ᴜꜱᴇ ᴛʜɪꜱ ✅.</b>", show_alert=True)
-        btn = [
-            [
-                InlineKeyboardButton('ꜱʜᴏʀᴛɴᴇʀ 1', callback_data=f'set_verify1#{grp_id}'),
-                InlineKeyboardButton('ꜱʜᴏʀᴛɴᴇʀ 2', callback_data=f'set_verify2#{grp_id}')
-            ],
-            [InlineKeyboardButton('ꜱʜᴏʀᴛɴᴇʀ 3', callback_data=f'set_verify3#{grp_id}')],
-            [InlineKeyboardButton('⇋ ʙᴀᴄᴋ ⇋', callback_data=f'verification_setgs#{grp_id}')]
-		]
-        await query.message.edit("<b>ᴄʜᴏᴏꜱᴇ ꜱʜᴏʀᴛɴᴇʀ ᴀɴᴅ ᴄʜᴀɴɢᴇ ᴛʜᴇ ᴠᴀʟᴜᴇꜱ ᴀꜱ ʏᴏᴜ ᴡᴀɴᴛ ✅</b>", reply_markup=InlineKeyboardMarkup(btn))
-
-    elif query.data.startswith("set_verify"):
-        shortner_num = query.data.split("#")[0][-1]
-        grp_id = query.data.split("#")[1]
-        user_id = query.from_user.id if query.from_user else None
-        silentx = await client.get_chat(int(grp_id))
-        invite_link = await client.export_chat_invite_link(grp_id)
-        if not await is_check_admin(client, int(grp_id), user_id):
-            return await query.answer("<b>ɴᴇᴇᴅ ᴛᴏ ʙᴇ ᴀᴅᴍɪɴ ᴛᴏ ᴜꜱᴇ ᴛʜɪꜱ ✅.</b>", show_alert=True)
-        settings = await get_settings(int(grp_id))
-        suffix = "" if shortner_num == "1" else f"_{'two' if shortner_num == '2' else 'three'}"
-        current_url = settings.get(f'shortner{suffix}', "ʏᴏᴜ ᴅɪᴅɴ'ᴛ ꜱᴇᴛ ᴀɴᴅ ᴠᴀʟᴜᴇ ꜱᴏ ᴜꜱɪɴɢ ᴅᴇꜰᴀᴜʟᴛ ᴠᴀʟᴜᴇꜱ")
-        current_api = settings.get(f'api{suffix}', "ʏᴏᴜ ᴅɪᴅɴ'ᴛ ꜱᴇᴛ ᴀɴᴅ ᴠᴀʟᴜᴇ ꜱᴏ ᴜꜱɪɴɢ ᴅᴇꜰᴀᴜʟᴛ ᴠᴀʟᴜᴇꜱ")    
-        await query.message.edit(f"<b>📌 ᴅᴇᴛᴀɪʟꜱ ᴏꜰ ꜱʜᴏʀᴛɴᴇʀ {shortner_num}:\nᴡᴇʙꜱɪᴛᴇ: <code>{current_url}</code>\nᴀᴘɪ: <code>{current_api}</code></b>")
-        m = await query.message.reply("<b>ꜱᴇɴᴅ ɴᴇᴡ ꜱʜᴏʀᴛɴᴇʀ ᴡᴇʙꜱɪᴛᴇ ᴏʀ ᴜꜱᴇ /cancel ᴛᴏ ᴄᴀɴᴄᴇʟ ᴛʜᴇ ᴘʀᴏᴄᴇꜱꜱ</b>") 
-        url_msg = await client.listen(chat_id=query.message.chat.id, user_id=user_id)
-        if url_msg.text == "/cancel":
-            btn = [[
-                InlineKeyboardButton('ꜱʜᴏʀᴛɴᴇʀ 1', callback_data=f'set_verify1#{grp_id}'),
-                InlineKeyboardButton('ꜱʜᴏʀᴛɴᴇʀ 2', callback_data=f'set_verify2#{grp_id}')
-            ],
-            [InlineKeyboardButton('ꜱʜᴏʀᴛɴᴇʀ 3', callback_data=f'set_verify3#{grp_id}')],
-            [InlineKeyboardButton('⇋ ʙᴀᴄᴋ ⇋', callback_data=f'verification_setgs#{grp_id}')]
-            ]	
-            await query.message.edit("<b>ᴄʜᴏᴏꜱᴇ ꜱʜᴏʀᴛɴᴇʀ ᴀɴᴅ ᴄʜᴀɴɢᴇ ᴛʜᴇ ᴠᴀʟᴜᴇꜱ ᴀꜱ ʏᴏᴜ ᴡᴀɴᴛ ✅</b>", reply_markup=InlineKeyboardMarkup(btn))
-            await m.delete()
-            return
-        await m.delete()
-        n = await query.message.reply("<b>ɴᴏᴡ ꜱᴇɴᴅ ꜱʜᴏʀᴛɴᴇʀ ᴀᴘɪ ᴏʀ ᴜꜱᴇ /cancel ᴛᴏ ᴄᴀɴᴄᴇʟ ᴛʜᴇ ᴘʀᴏᴄᴇꜱꜱ</b>")
-        key_msg = await client.listen(chat_id=query.message.chat.id, user_id=user_id)
-        if key_msg.text == "/cancel":
-            btn = [[
-                InlineKeyboardButton('ꜱʜᴏʀᴛɴᴇʀ 1', callback_data=f'set_verify1#{grp_id}'),
-                InlineKeyboardButton('ꜱʜᴏʀᴛɴᴇʀ 2', callback_data=f'set_verify2#{grp_id}')
-            ],
-            [InlineKeyboardButton('ꜱʜᴏʀᴛɴᴇʀ 3', callback_data=f'set_verify3#{grp_id}')],
-            [InlineKeyboardButton('⇋ ʙᴀᴄᴋ ⇋', callback_data=f'verification_setgs#{grp_id}')]
-            ]	
-            await query.message.edit("<b>ᴄʜᴏᴏꜱᴇ ꜱʜᴏʀᴛɴᴇʀ ᴀɴᴅ ᴄʜᴀɴɢᴇ ᴛʜᴇ ᴠᴀʟᴜᴇꜱ ᴀꜱ ʏᴏᴜ ᴡᴀɴᴛ ✅</b>", reply_markup=InlineKeyboardMarkup(btn))
-            await n.delete()
-            return
-        await n.delete()    		
-        await save_group_settings(int(grp_id), f'shortner{suffix}', url_msg.text)
-        await save_group_settings(int(grp_id), f'api{suffix}', key_msg.text)
-        log_message = f"#New_Shortner_Set\n\n ꜱʜᴏʀᴛɴᴇʀ ɴᴏ - {shortner_num}\nɢʀᴏᴜᴘ ʟɪɴᴋ - `{invite_link}`\n\nɢʀᴏᴜᴘ ɪᴅ : `{grp_id}`\nᴀᴅᴅᴇᴅ ʙʏ - `{user_id}`\nꜱʜᴏʀᴛɴᴇʀ ꜱɪᴛᴇ - {url_msg.text}\nꜱʜᴏʀᴛɴᴇʀ ᴀᴘɪ - `{key_msg.text}`"
-        await client.send_message(LOG_API_CHANNEL, log_message, disable_web_page_preview=True)
-        next_shortner = int(shortner_num) + 1 if shortner_num in ["1", "2"] else None
-        btn = [
-            [InlineKeyboardButton(f'ꜱʜᴏʀᴛɴᴇʀ {next_shortner}', callback_data=f'set_verify{next_shortner}#{grp_id}')] if next_shortner else [],
-            [InlineKeyboardButton('⇋ ʙᴀᴄᴋ ⇋', callback_data=f'verification_setgs#{grp_id}')]
-        ]    
-        await query.message.reply(f"<b>ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ᴜᴘᴅᴀᴛᴇᴅ ꜱʜᴏʀᴛɴᴇʀ {shortner_num} ᴠᴀʟᴜᴇꜱ ✅\n\nᴡᴇʙꜱɪᴛᴇ: <code>{url_msg.text}</code>\nᴀᴘɪ: <code>{key_msg.text}</code></b>", reply_markup=InlineKeyboardMarkup(btn))
-
-    
     elif query.data.startswith("changetime"):
         _, grp_id = query.data.split("#")
         user_id = query.from_user.id if query.from_user else None
@@ -1962,7 +1855,7 @@ async def auto_filter(client, msg, spoll=False):
             ]
         )
         btn.insert(1, [
-	    InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=f"https://t.me/AM_FILMS"),
+	    InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=SUPPORT_LNK),
             InlineKeyboardButton("📥 Sᴇɴᴅ Aʟʟ 📥", callback_data=f"sendfiles#{key}")
             
         ])
@@ -1976,7 +1869,7 @@ async def auto_filter(client, msg, spoll=False):
             ]
         )
         btn.insert(1, [
-	    InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=f"https://t.me/AM_FILMS"),
+	    InlineKeyboardButton("Sᴜᴘᴘᴏʀᴛ", url=SUPPORT_LNK),
             InlineKeyboardButton("📥 Sᴇɴᴅ Aʟʟ 📥", callback_data=f"sendfiles#{key}")
             
         ])
@@ -2153,7 +2046,7 @@ async def advantage_spell_chok(client, message):
         google = search.replace(" ", "+")
         button = [[
             InlineKeyboardButton("🔍 ᴄʜᴇᴄᴋ sᴘᴇʟʟɪɴɢ ᴏɴ ɢᴏᴏɢʟᴇ 🔍", url=f"https://www.google.com/search?q={google}")],
-            [InlineKeyboardButton("📞 ʀᴇQᴜᴇsᴛ ᴛᴏ ᴀᴅᴍɪɴ 📞", url=f"https://t.me/GUARDIANff")
+            [InlineKeyboardButton("📞 ʀᴇQᴜᴇsᴛ ᴛᴏ ᴀᴅᴍɪɴ 📞", url=OWNER_LNK)
         ]]
         k = await message.reply_text(text=script.I_CUDNT.format(search), reply_markup=InlineKeyboardMarkup(button))
         await asyncio.sleep(60)
