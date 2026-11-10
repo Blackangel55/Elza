@@ -108,11 +108,3 @@ async def set_commands(client, message):
     await asyncio.sleep(119)  
     await bot_set.delete()
     await message.delete()
-
-
-
-# DEBUG: group=-1 runs before all handlers and blocks nothing.
-# Shows in Koyeb log whether updates reach the bot. Remove when fixed.
-@Client.on_message(group=-1)
-async def _debug_updates(client, message):
-    print(f"UPDATE chat={message.chat.id} user={message.from_user.id if message.from_user else None} text={message.text!r}", flush=True)
