@@ -74,10 +74,10 @@ MULTIPLE_DB = is_enabled(os.environ.get('MULTIPLE_DB', "False"), False) # Type T
 DATABASE_URI2 = environ.get('DATABASE_URI2', "")
 DB_CHANGE_LIMIT = int(environ.get('DB_CHANGE_LIMIT', "432")) 
 
-GRP_LNK = environ.get('GRP_LNK', '')
-CHNL_LNK = environ.get('CHNL_LNK', '')
-OWNER_LNK = environ.get('OWNER_LNK', '')
-UPDATE_CHANNEL_LNK = environ.get('UPDATE_CHANNEL_LNK', '')
+GRP_LNK = environ.get('GRP_LNK', 'https://t.me/+ix9P65l4kPUwYWM1')
+CHNL_LNK = environ.get('CHNL_LNK', 'https://t.me/AM_FILMS')
+OWNER_LNK = environ.get('OWNER_LNK', 'https://t.me/GUARDIANff')
+UPDATE_CHANNEL_LNK = environ.get('UPDATE_CHANNEL_LNK', 'https://t.me/+NUkifqTOBq40OTQ1')
 
 AUTH_CHANNEL = environ.get("AUTH_CHANNEL", "") # add multiple channels here, separated by single space
 AUTH_CHANNEL = [int(ch) for ch in AUTH_CHANNEL.strip().split()] if AUTH_CHANNEL else []
