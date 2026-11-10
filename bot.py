@@ -7,7 +7,7 @@ import pytz
 from aiohttp import web
 from pyrogram import idle, __version__
 from pyrogram.raw.all import layer
-from database.ia_filterdb import Media, Media2
+from database.ia_filterdb import Media, Media2, backfill_added_on
 from database.users_chats_db import db
 from info import *
 from utils import temp
@@ -50,6 +50,14 @@ async def SilentXBotz_start():
             print("Single DB Mode On ! Files Will Be Save In First Database")
     except Exception as e:
         logging.warning(f"Could not create DB indexes, continuing without them (search falls back to regex): {e}")
+    # One-time backfill: files saved before added_on existed have no
+    # timestamp, so they sort arbitrarily among themselves. Stamp them
+    # in insertion order in the background; it never blocks startup,
+    # and a failure only logs a warning inside the backfill itself.
+    try:
+        asyncio.create_task(backfill_added_on())
+    except Exception as e:
+        logging.warning(f"Could not start added_on backfill: {e}")
     me = await SilentX.get_me()
     temp.ME = me.id
     temp.U_NAME = me.username

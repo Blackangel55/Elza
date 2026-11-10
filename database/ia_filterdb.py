@@ -6,6 +6,7 @@ import asyncio
 from typing import Dict, List, Tuple, Optional
 from pyrogram.file_id import FileId
 from pymongo.errors import DuplicateKeyError
+from pymongo import UpdateOne
 from umongo import Instance, Document, fields
 from motor.motor_asyncio import AsyncIOMotorClient
 from marshmallow.exceptions import ValidationError
@@ -215,6 +216,49 @@ async def save_file(media):
     else:
         LOGGER.info(f'{file_name} Saved Successfully In {"Secondary" if use_secondary else "Primary"} Database')
         return True, 1
+
+async def backfill_added_on(batch_size=500):
+    """One-time backfill: stamp files saved before added_on existed.
+
+    Those rows have no added_on, so among themselves they sort in
+    arbitrary order even though search now sorts by (textScore,
+    added_on desc). This stamps the missing rows in insertion order
+    ($natural, oldest first) with increasing timestamps, newest last,
+    so the newest-first order covers them too. Idempotent: only rows
+    where added_on is missing are touched, so a later run is a no-op
+    (one count query). Runs in the background at startup; a failure
+    only logs a warning and never affects the bot.
+    """
+    targets = [(db, "primary")]
+    if MULTIPLE_DB:
+        targets.append((db2, "secondary"))
+    for target_db, label in targets:
+        collection = target_db[COLLECTION_NAME]
+        try:
+            missing = await collection.count_documents({"added_on": None})
+        except Exception as e:
+            LOGGER.warning(f"added_on backfill ({label}): count failed: {e}")
+            continue
+        if not missing:
+            continue
+        LOGGER.info(f"added_on backfill ({label}): stamping {missing} files...")
+        try:
+            # Newest missing row ends up ~now; older rows go back one
+            # second each, so the timestamps keep the true insertion order.
+            base = datetime.utcnow() - timedelta(seconds=missing)
+            stamped = 0
+            while True:
+                ids = [doc["_id"] async for doc in
+                       collection.find({"added_on": None}, {"_id": 1}).sort("$natural", 1).limit(batch_size)]
+                if not ids:
+                    break
+                ops = [UpdateOne({"_id": file_id}, {"$set": {"added_on": base + timedelta(seconds=stamped + i)}})
+                       for i, file_id in enumerate(ids)]
+                await collection.bulk_write(ops)
+                stamped += len(ids)
+            LOGGER.info(f"added_on backfill ({label}): stamped {stamped} files.")
+        except Exception as e:
+            LOGGER.warning(f"added_on backfill ({label}) failed: {e}")
 
 def _text_search_terms(query: str):
     """Terms for a MongoDB $text search, or None when $text can't help.
