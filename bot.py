@@ -92,9 +92,11 @@ async def SilentXBotz_start():
 
 if __name__ == '__main__':
     try:
-        # asyncio.run() so the client always runs on the live event
-        # loop - no get_event_loop() dead-loop pinning, the bug that
-        # crashed the Spotify bot on Koyeb.
-        asyncio.run(SilentXBotz_start())
+        # Use the SAME loop Pyrogram captured at import time (Client and
+        # Dispatcher call asyncio.get_event_loop() in __init__). asyncio.run()
+        # makes a new loop, so handler workers never run: bot connects, sends
+        # messages, but never answers any update.
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(SilentXBotz_start())
     except KeyboardInterrupt:
         logging.info('Service Stopped Bye 👋')
