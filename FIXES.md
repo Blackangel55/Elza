@@ -243,7 +243,8 @@ his own patches — and asked for it to be pushed. Applied as-is (4 files):
   incoming message (chat, user, text). Same job as the temporary
   `plugins/debug_updates.py` from the /start investigation, which stays
   on the branch — remove one of them once the silence is diagnosed.
-- `plugins/pm_filter.py`: `tracemalloc.start()` added;
+- `plugins/pm_filter.py`: `tracemalloc.start()` removed (it was at the
+  top of the branch version — the zip drops it);
   `update_top_messages` wrapped in try/except;
   `settings['auto_ffilter']` / `settings['imdb']` /
   `settings['spell_check']` changed to safe `.get()` (a missing key used
