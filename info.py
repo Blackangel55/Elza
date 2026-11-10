@@ -56,7 +56,7 @@ FSUB_IMG = (environ.get('FSUB_PICS', 'https://i.ibb.co/3Y8t1Cxz/x.jpg')).split()
 ADMINS = [int(admin) if id_pattern.search(admin) else admin for admin in environ.get('ADMINS', '').split()] 
 CHANNELS = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('CHANNELS', '').split()]
 LOG_CHANNEL = _int_env('LOG_CHANNEL', required=True)  
-BIN_CHANNEL = _int_env('BIN_CHANNEL', required=True)  
+BIN_CHANNEL = _int_env('BIN_CHANNEL', required=False)  
 MOVIE_UPDATE_CHANNEL = _int_env('MOVIE_UPDATE_CHANNEL')  # None = don't post movie updates  
 auth_grp = environ.get('AUTH_GROUP')
 AUTH_GROUPS = [int(ch) for ch in auth_grp.split()] if auth_grp else None
