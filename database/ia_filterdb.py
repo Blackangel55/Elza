@@ -263,14 +263,16 @@ _YEAR_RE = re.compile(r'(19|20)\d\d')
 
 
 def _split_terms(query: str):
-    """Split a query into title words (no stop words, no year) and years."""
+    """Split a query into: title words (2+ letters, for the text index),
+    years, and ordered words (every non-stop, non-year word incl. one-letter
+    ones like the "i m" of "i m game", used for the in-order file-name match)."""
     words = re.sub(r'[^A-Za-z0-9 ]+', ' ', query or '').split()
     years = [w for w in words if _YEAR_RE.fullmatch(w)]
-    titles = [w for w in words
-              if len(w) >= 2
-              and w.lower() not in _TITLE_STOP_WORDS
-              and not _YEAR_RE.fullmatch(w)]
-    return titles, years
+    ordered = [w for w in words
+               if w.lower() not in _TITLE_STOP_WORDS
+               and not _YEAR_RE.fullmatch(w)]
+    titles = [w for w in ordered if len(w) >= 2]
+    return titles, years, ordered
 
 
 def _merge_newest(*lists, limit):
@@ -328,7 +330,7 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
         search_queries.append(query_no_special)
     text_terms = _text_search_terms(original_query)
     if text_terms:
-        titles, years = _split_terms(original_query)
+        titles, years, ordered = _split_terms(original_query)
         sort_spec = [('added_on', -1)]   # newest first, always
         attempts = []
 
@@ -341,7 +343,9 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
             # $text uses the index to find candidates by title words only.
             # Every title word AND the year must then appear in the file name.
             title_text = ' '.join(titles)
-            title_res = [{'file_name': re.compile(re.escape(t), re.IGNORECASE)} for t in titles]
+            # All words must appear IN ORDER (same as the old search), so
+            # "i m game" finds "I m Game" / "Im Game" and not every Game file.
+            title_res = [{'file_name': re.compile('.*'.join(re.escape(t) for t in ordered), re.IGNORECASE)}]
             year_res = [{'file_name': re.compile(r'(?<!\d)' + y + r'(?!\d)')} for y in years]
             attempts.append(_with_type({'$text': {'$search': title_text}, '$and': title_res + year_res}))
             if years:
