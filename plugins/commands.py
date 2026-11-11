@@ -29,6 +29,19 @@ BATCH_FILES = {}
 
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
+    # Wrapper: log every /start and show crashes instead of staying silent.
+    print(f"START from {message.from_user.id if message.from_user else None}: {str(message.text)[:70]}")
+    try:
+        await _start_impl(client, message)
+    except Exception as e:
+        print(f"START ERROR: {type(e).__name__}: {e}")
+        try:
+            await message.reply(f"Error: {type(e).__name__}: {str(e)[:150]}")
+        except Exception:
+            pass
+
+
+async def _start_impl(client, message):
     if EMOJI_MODE:
         await message.react(emoji=random.choice(REACTIONS))
     m = message
@@ -194,6 +207,7 @@ async def start(client, message):
             if btn:
                 if message.command[1] != "subscribe":
                     btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start={message.command[1]}")])
+                print("START blocked: force-subscribe (user must join the channel)")
                 await client.send_photo(
                     chat_id=message.from_user.id,
                     photo=random.choice(FSUB_IMG),
@@ -236,6 +250,7 @@ async def start(client, message):
                     msg = script.THIRDT_VERIFICATION_TEXT
                 else:            
                     msg = script.SECOND_VERIFICATION_TEXT if is_second_shortener else script.VERIFICATION_TEXT
+                print("START blocked: verification required (group/IS_VERIFY setting)")
                 n=await m.reply_text(
                     text=msg.format(message.from_user.mention),
                     protect_content = True,
@@ -365,6 +380,7 @@ async def start(client, message):
         btn = [
             [InlineKeyboardButton('𝖴𝗉𝖽𝖺𝗍𝖾 𝖢𝗁𝖺𝗇𝗇𝖾𝗅', url=UPDATE_CHANNEL_LNK)]
         ]
+    print(f"START sending file {file_id}")
     msg = await client.send_cached_media(
         chat_id=message.from_user.id,
         file_id=file_id,
@@ -1020,4 +1036,3 @@ async def reset_all_settings(client, message):
     except Exception as e:
         print(f"Error Processing Reset All Settings Command: {str(e)}")
         await message.reply("<b>ᴇʀʀᴏʀ 🚫.oᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴅᴇʟᴇᴛɪɴɢ ɢʀᴏᴜᴘ ꜱᴇᴛᴛɪɴɢꜱ! ᴘʟᴇᴀꜱᴇ ᴛʀʏ ᴀɢᴀɪɴ ʟᴀᴛᴇʀ.</b>", quote=True)
-        
