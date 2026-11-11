@@ -6,6 +6,7 @@ import asyncio
 from typing import Dict, List, Tuple, Optional
 from pyrogram.file_id import FileId
 from pymongo.errors import DuplicateKeyError
+from pymongo import UpdateOne
 from umongo import Instance, Document, fields
 from motor.motor_asyncio import AsyncIOMotorClient
 from marshmallow.exceptions import ValidationError
@@ -130,6 +131,7 @@ class Media(Document):
     file_type = fields.StrField(allow_none=True)
     mime_type = fields.StrField(allow_none=True)
     caption = fields.StrField(allow_none=True)
+    added_on = fields.DateTimeField(allow_none=True)
     
     class Meta:
         indexes = (
@@ -149,6 +151,7 @@ class Media2(Document):
     file_type = fields.StrField(allow_none=True)
     mime_type = fields.StrField(allow_none=True)
     caption = fields.StrField(allow_none=True)
+    added_on = fields.DateTimeField(allow_none=True)
     
     class Meta:
         indexes = (
@@ -201,6 +204,7 @@ async def save_file(media):
             file_type=media.file_type,
             mime_type=media.mime_type,
             caption=media.caption.html if media.caption else None,
+            added_on=datetime.utcnow(),
         )
         await file.commit()
     except DuplicateKeyError:
@@ -212,6 +216,69 @@ async def save_file(media):
     else:
         LOGGER.info(f'{file_name} Saved Successfully In {"Secondary" if use_secondary else "Primary"} Database')
         return True, 1
+
+async def backfill_added_on(batch_size=500):
+    targets = [(db, "primary")]
+    if MULTIPLE_DB:
+        targets.append((db2, "secondary"))
+    for target_db, label in targets:
+        collection = target_db[COLLECTION_NAME]
+        try:
+            missing = await collection.count_documents({"added_on": None})
+        except Exception as e:
+            LOGGER.warning(f"added_on backfill ({label}): count failed: {e}")
+            continue
+        if not missing:
+            continue
+        LOGGER.info(f"added_on backfill ({label}): stamping {missing} files...")
+        try:
+            # Newest missing row ends up ~now; older rows go back one
+            # second each, so the timestamps keep the true insertion order.
+            base = datetime.utcnow() - timedelta(seconds=missing)
+            stamped = 0
+            while True:
+                ids = [doc["_id"] async for doc in
+                       collection.find({"added_on": None}, {"_id": 1}).sort("$natural", 1).limit(batch_size)]
+                if not ids:
+                    break
+                ops = [UpdateOne({"_id": file_id}, {"$set": {"added_on": base + timedelta(seconds=stamped + i)}})
+                       for i, file_id in enumerate(ids)]
+                await collection.bulk_write(ops)
+                stamped += len(ids)
+            LOGGER.info(f"added_on backfill ({label}): stamped {stamped} files.")
+        except Exception as e:
+            LOGGER.warning(f"added_on backfill ({label}) failed: {e}")
+
+def _text_search_terms(query: str):
+    terms = re.sub(r'[^A-Za-z0-9 ]+', ' ', query or '')
+    terms = re.sub(r'\s+', ' ', terms).strip()
+    return terms or None
+
+
+# Words that carry no meaning on their own in a title: filenames often
+# drop them ("Odyssey 2026" for "The Odyssey 2026"), so they must never
+# be required for a file to match.
+_TITLE_STOP_WORDS = {"the", "a", "an", "and", "or", "of", "to", "in", "is", "for", "on", "with", "by", "at", "from", "as"}
+_YEAR_RE = re.compile(r'(19|20)\d\d')
+
+
+def _split_terms(query: str):
+    """Split a query into title words (no stop words, no year) and years."""
+    words = re.sub(r'[^A-Za-z0-9 ]+', ' ', query or '').split()
+    years = [w for w in words if _YEAR_RE.fullmatch(w)]
+    titles = [w for w in words
+              if len(w) >= 2
+              and w.lower() not in _TITLE_STOP_WORDS
+              and not _YEAR_RE.fullmatch(w)]
+    return titles, years
+
+
+def _merge_newest(*lists, limit):
+    """Merge result lists from both databases, newest file first."""
+    merged = [f for lst in lists for f in lst]
+    merged.sort(key=lambda f: getattr(f, 'added_on', None) or datetime.min, reverse=True)
+    return merged[:limit]
+
 
 async def get_search_results(chat_id, query, file_type=None, max_results=10, offset=0, filter=False):
     if chat_id is not None:
@@ -239,7 +306,8 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
         'file_size': 1,
         'file_type': 1,
         'caption': 1,
-        'mime_type': 1
+        'mime_type': 1,
+        'added_on': 1
     }
 
     search_queries = []
@@ -258,6 +326,56 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
     query_no_special = SPACES_PATTERN.sub(' ', query_no_special).strip()
     if query_no_special and query_no_special not in search_queries:
         search_queries.append(query_no_special)
+    text_terms = _text_search_terms(original_query)
+    if text_terms:
+        titles, years = _split_terms(original_query)
+        sort_spec = [('added_on', -1)]   # newest first, always
+        attempts = []
+
+        def _with_type(f):
+            if file_type:
+                f['file_type'] = file_type
+            return f
+
+        if titles:
+            # $text uses the index to find candidates by title words only.
+            # Every title word AND the year must then appear in the file name.
+            title_text = ' '.join(titles)
+            title_res = [{'file_name': re.compile(re.escape(t), re.IGNORECASE)} for t in titles]
+            year_res = [{'file_name': re.compile(r'(?<!\d)' + y + r'(?!\d)')} for y in years]
+            attempts.append(_with_type({'$text': {'$search': title_text}, '$and': title_res + year_res}))
+            if years:
+                # No file with that year: show the title of any year, newest first.
+                attempts.append(_with_type({'$text': {'$search': title_text}, '$and': title_res}))
+        else:
+            # Only a year or only stop words: plain text search, newest first.
+            attempts.append(_with_type({'$text': {'$search': text_terms}}))
+
+        for text_filter in attempts:
+            try:
+                if MULTIPLE_DB:
+                    c1, c2, f1, f2 = await asyncio.gather(
+                        Media.count_documents(text_filter),
+                        Media2.count_documents(text_filter),
+                        Media.find(text_filter, projection).sort(sort_spec).skip(offset).limit(max_results).to_list(length=max_results),
+                        Media2.find(text_filter, projection).sort(sort_spec).skip(offset).limit(max_results).to_list(length=max_results)
+                    )
+                    total_results = c1 + c2
+                    files = _merge_newest(f1, f2, limit=max_results)
+                else:
+                    total_results = await Media.count_documents(text_filter)
+                    files = await Media.find(text_filter, projection).sort(sort_spec).skip(offset).limit(max_results).to_list(length=max_results)
+                if files:
+                    logger.info(f"✅ Found {len(files)} results with $text search: '{text_terms}'")
+                    next_offset = offset + len(files)
+                    if next_offset >= total_results:
+                        next_offset = ''
+                    result = (files, next_offset, total_results)
+                    search_cache.set(cache_key, result)
+                    return result
+            except Exception as e:
+                logger.warning(f"$text search failed ({e}) - trying next")
+        logger.info(f"❌ No $text results for: '{text_terms}' - falling back to regex")
 
     files = []
     total_results = 0
