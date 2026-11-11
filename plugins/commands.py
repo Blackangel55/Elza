@@ -29,19 +29,6 @@ BATCH_FILES = {}
 
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
-    # Wrapper: log every /start and show crashes instead of staying silent.
-    print(f"START from {message.from_user.id if message.from_user else None}: {str(message.text)[:70]}")
-    try:
-        await _start_impl(client, message)
-    except Exception as e:
-        print(f"START ERROR: {type(e).__name__}: {e}")
-        try:
-            await message.reply(f"Error: {type(e).__name__}: {str(e)[:150]}")
-        except Exception:
-            pass
-
-
-async def _start_impl(client, message):
     if EMOJI_MODE:
         await message.react(emoji=random.choice(REACTIONS))
     m = message
@@ -207,7 +194,6 @@ async def _start_impl(client, message):
             if btn:
                 if message.command[1] != "subscribe":
                     btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start={message.command[1]}")])
-                print("START blocked: force-subscribe (user must join the channel)")
                 await client.send_photo(
                     chat_id=message.from_user.id,
                     photo=random.choice(FSUB_IMG),
@@ -250,7 +236,6 @@ async def _start_impl(client, message):
                     msg = script.THIRDT_VERIFICATION_TEXT
                 else:            
                     msg = script.SECOND_VERIFICATION_TEXT if is_second_shortener else script.VERIFICATION_TEXT
-                print("START blocked: verification required (group/IS_VERIFY setting)")
                 n=await m.reply_text(
                     text=msg.format(message.from_user.mention),
                     protect_content = True,
@@ -347,7 +332,7 @@ async def _start_impl(client, message):
                 except:
                     return
             await msg.edit_caption(f_caption)
-            k = await msg.reply(f"<b>♻️ ꜰᴏʀᴡᴀʀᴅ ᴛʜᴇ ꜰɪʟᴇ ᴛᴏ ᴀɴʏᴡʜᴇʀᴇ. ᴛʜɪꜱ ꜰɪʟᴇ ᴡɪʟʟ ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀꜰᴛᴇʀ {get_time(DELETE_TIME)}\n♻️ഫയൽ എവിടെയെങ്കിലും ഫോർവേഡ് ചെയ്ത് വെക്കുക. ഫയൽ തനിയെ {get_time(DELETE_TIME)} ശേഷം ഡിലീറ്റ് ആവും.</b>", quote=True)
+            k = await msg.reply(f"<b>♻️ ꜰᴏʀᴡᴀʀᴅ ᴛʜᴇ ꜰɪʟᴇ ᴛᴏ ᴀɴʏᴡʜᴇʀᴇ. ᴛʜɪꜱ ꜰɪʟᴇ ᴡɪʟʟ ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀꜰᴛᴇʀ {get_time(DELETE_TIME)}</b>", quote=True)
             await asyncio.sleep(DELETE_TIME)
             await msg.delete()
             await k.edit_text("<b>ʏᴏᴜʀ ᴠɪᴅᴇᴏ / ꜰɪʟᴇ ɪꜱ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ᴅᴇʟᴇᴛᴇᴅ !!</b>")
@@ -380,7 +365,6 @@ async def _start_impl(client, message):
         btn = [
             [InlineKeyboardButton('𝖴𝗉𝖽𝖺𝗍𝖾 𝖢𝗁𝖺𝗇𝗇𝖾𝗅', url=UPDATE_CHANNEL_LNK)]
         ]
-    print(f"START sending file {file_id}")
     msg = await client.send_cached_media(
         chat_id=message.from_user.id,
         file_id=file_id,
@@ -388,7 +372,7 @@ async def _start_impl(client, message):
         protect_content=settings.get('file_secure', PROTECT_CONTENT),
         reply_markup=InlineKeyboardMarkup(btn)
     )
-    k = await msg.reply(f"<b>♻️ ꜰᴏʀᴡᴀʀᴅ ᴛʜᴇ ꜰɪʟᴇ ᴛᴏ ᴀɴʏᴡʜᴇʀᴇ. ᴛʜɪꜱ ꜰɪʟᴇ ᴡɪʟʟ ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀꜰᴛᴇʀ {get_time(DELETE_TIME)}\n♻️ഫയൽ എവിടെയെങ്കിലും ഫോർവേഡ് ചെയ്ത് വെക്കുക. ഫയൽ തനിയെ {get_time(DELETE_TIME)} ശേഷം ഡിലീറ്റ് ആവും.</b>", quote=True)     
+    k = await msg.reply(f"<b>♻️ ꜰᴏʀᴡᴀʀᴅ ᴛʜᴇ ꜰɪʟᴇ ᴛᴏ ᴀɴʏᴡʜᴇʀᴇ. ᴛʜɪꜱ ꜰɪʟᴇ ᴡɪʟʟ ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀꜰᴛᴇʀ {get_time(DELETE_TIME)}</b>", quote=True)     
     await asyncio.sleep(DELETE_TIME)
     await msg.delete()
     await k.edit_text("<b>ʏᴏᴜʀ ᴠɪᴅᴇᴏ / ꜰɪʟᴇ ɪꜱ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ᴅᴇʟᴇᴛᴇᴅ !!</b>")
@@ -1036,3 +1020,4 @@ async def reset_all_settings(client, message):
     except Exception as e:
         print(f"Error Processing Reset All Settings Command: {str(e)}")
         await message.reply("<b>ᴇʀʀᴏʀ 🚫.oᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴅᴇʟᴇᴛɪɴɢ ɢʀᴏᴜᴘ ꜱᴇᴛᴛɪɴɢꜱ! ᴘʟᴇᴀꜱᴇ ᴛʀʏ ᴀɢᴀɪɴ ʟᴀᴛᴇʀ.</b>", quote=True)
+        
