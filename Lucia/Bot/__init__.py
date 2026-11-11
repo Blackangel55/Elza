@@ -40,7 +40,7 @@ class SilentXBot(Client):
             api_id=API_ID,
             api_hash=API_HASH,
             bot_token=BOT_TOKEN,
-            workers=150,
+            workers=16,
             plugins={"root": "plugins"},
             sleep_threshold=5,
         )
@@ -100,6 +100,3 @@ class SilentXBot(Client):
                 current += 1
       
 SilentX = SilentXBot()
-
-multi_clients = {}
-work_loads = {}
