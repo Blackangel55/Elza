@@ -29,6 +29,19 @@ BATCH_FILES = {}
 
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
+    # Wrapper: log every /start and show crashes instead of staying silent.
+    print(f"START from {message.from_user.id if message.from_user else None}: {str(message.text)[:70]}")
+    try:
+        await _start_impl(client, message)
+    except Exception as e:
+        print(f"START ERROR: {type(e).__name__}: {e}")
+        try:
+            await message.reply(f"Error: {type(e).__name__}: {str(e)[:150]}")
+        except Exception:
+            pass
+
+
+async def _start_impl(client, message):
     if EMOJI_MODE:
         await message.react(emoji=random.choice(REACTIONS))
     m = message
@@ -151,6 +164,7 @@ async def start(client, message):
         return
             
     data = message.command[1]
+    print('START step 1: payload read')
     try:
         pre, grp_id, file_id = data.split('_', 2)
     except:
@@ -194,6 +208,7 @@ async def start(client, message):
             if btn:
                 if message.command[1] != "subscribe":
                     btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start={message.command[1]}")])
+                print("START blocked: force-subscribe (user must join the channel)")
                 await client.send_photo(
                     chat_id=message.from_user.id,
                     photo=random.choice(FSUB_IMG),
@@ -206,6 +221,7 @@ async def start(client, message):
         await log_error(client, f"Got Error In Force Subscription Function.\n\n Error - {e}")
         print(f"Error In Fsub :- {e}")
         
+    print('START step 2: force-sub check passed')
     user_id = m.from_user.id
     if not await db.has_premium_access(user_id):
         try:
@@ -236,6 +252,7 @@ async def start(client, message):
                     msg = script.THIRDT_VERIFICATION_TEXT
                 else:            
                     msg = script.SECOND_VERIFICATION_TEXT if is_second_shortener else script.VERIFICATION_TEXT
+                print("START blocked: verification required (group/IS_VERIFY setting)")
                 n=await m.reply_text(
                     text=msg.format(message.from_user.mention),
                     protect_content = True,
@@ -251,6 +268,7 @@ async def start(client, message):
             print(f"Error In Verification - {e}")
             pass
     
+    print("START step 3: verification check passed")
     if data.startswith("allfiles"):
         files = temp.GETALL.get(file_id)
         if not files:
@@ -299,8 +317,10 @@ async def start(client, message):
 
     user = message.from_user.id
     files_ = await get_file_details(file_id)  
+    print(f'START step 4: file found in database = {bool(files_)}')
     settings = await get_settings(int(grp_id))
     if not files_:
+        print('START: file id not in database, trying fallback')
         pre, file_id = ((base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))).decode("ascii")).split("_", 1)
         try:
             if STREAM_MODE:
@@ -332,7 +352,7 @@ async def start(client, message):
                 except:
                     return
             await msg.edit_caption(f_caption)
-            k = await msg.reply(f"<b>♻️ ꜰᴏʀᴡᴀʀᴅ ᴛʜᴇ ꜰɪʟᴇ ᴛᴏ ᴀɴʏᴡʜᴇʀᴇ. ᴛʜɪꜱ ꜰɪʟᴇ ᴡɪʟʟ ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀꜰᴛᴇʀ {get_time(DELETE_TIME)}</b>", quote=True)
+            k = await msg.reply(f"<b>♻️ ꜰᴏʀᴡᴀʀᴅ ᴛʜᴇ ꜰɪʟᴇ ᴛᴏ ᴀɴʏᴡʜᴇʀᴇ. ᴛʜɪꜱ ꜰɪʟᴇ ᴡɪʟʟ ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀꜰᴛᴇʀ {get_time(DELETE_TIME)}\n♻️ഫയൽ എവിടെയെങ്കിലും ഫോർവേഡ് ചെയ്ത് വെക്കുക. ഫയൽ തനിയെ {get_time(DELETE_TIME)} ശേഷം ഡിലീറ്റ് ആവും.</b>", quote=True)
             await asyncio.sleep(DELETE_TIME)
             await msg.delete()
             await k.edit_text("<b>ʏᴏᴜʀ ᴠɪᴅᴇᴏ / ꜰɪʟᴇ ɪꜱ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ᴅᴇʟᴇᴛᴇᴅ !!</b>")
@@ -365,6 +385,7 @@ async def start(client, message):
         btn = [
             [InlineKeyboardButton('𝖴𝗉𝖽𝖺𝗍𝖾 𝖢𝗁𝖺𝗇𝗇𝖾𝗅', url=UPDATE_CHANNEL_LNK)]
         ]
+    print(f"START sending file {file_id}")
     msg = await client.send_cached_media(
         chat_id=message.from_user.id,
         file_id=file_id,
@@ -372,7 +393,7 @@ async def start(client, message):
         protect_content=settings.get('file_secure', PROTECT_CONTENT),
         reply_markup=InlineKeyboardMarkup(btn)
     )
-    k = await msg.reply(f"<b>♻️ ꜰᴏʀᴡᴀʀᴅ ᴛʜᴇ ꜰɪʟᴇ ᴛᴏ ᴀɴʏᴡʜᴇʀᴇ. ᴛʜɪꜱ ꜰɪʟᴇ ᴡɪʟʟ ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀꜰᴛᴇʀ {get_time(DELETE_TIME)}</b>", quote=True)     
+    k = await msg.reply(f"<b>♻️ ꜰᴏʀᴡᴀʀᴅ ᴛʜᴇ ꜰɪʟᴇ ᴛᴏ ᴀɴʏᴡʜᴇʀᴇ. ᴛʜɪꜱ ꜰɪʟᴇ ᴡɪʟʟ ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀꜰᴛᴇʀ {get_time(DELETE_TIME)}\n♻️ഫയൽ എവിടെയെങ്കിലും ഫോർവേഡ് ചെയ്ത് വെക്കുക. ഫയൽ തനിയെ {get_time(DELETE_TIME)} ശേഷം ഡിലീറ്റ് ആവും.</b>", quote=True)     
     await asyncio.sleep(DELETE_TIME)
     await msg.delete()
     await k.edit_text("<b>ʏᴏᴜʀ ᴠɪᴅᴇᴏ / ꜰɪʟᴇ ɪꜱ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ ᴅᴇʟᴇᴛᴇᴅ !!</b>")
