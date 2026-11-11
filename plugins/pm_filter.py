@@ -742,20 +742,42 @@ async def advantage_spoll_choker(bot, query):
                 
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
-    lazyData = query.data
+    # Wrapper: prints every tap that reaches the bot, and shows any crash to
+    # the user instead of leaving the button silent.
+    print(f"CALLBACK tap: {str(query.data)[:40]}")
     try:
-        link = await client.create_chat_invite_link(int(REQST_CHANNEL))
-    except:
-        pass
+        await _cb_handler_impl(client, query)
+    except Exception as e:
+        print(f"CALLBACK ERROR on {str(query.data)[:40]}: {type(e).__name__}: {e}")
+        logger.exception(e)
+        try:
+            await query.answer(f"Error: {type(e).__name__}: {str(e)[:120]}", show_alert=True)
+        except Exception:
+            pass
+
+
+async def _cb_handler_impl(client: Client, query: CallbackQuery):
+    lazyData = query.data
+    if REQST_CHANNEL:
+        # only when a request channel is set: an extra API call on every
+        # tap delays the answer, and a late answer is ignored.
+        try:
+            link = await client.create_chat_invite_link(int(REQST_CHANNEL))
+        except Exception:
+            pass
     if query.data == "close_data":
         await query.message.delete()     
         
     if query.data.startswith("file"):
         ident, file_id = query.data.split("#")
-        user = query.message.reply_to_message.from_user.id
+        try:
+            user = query.message.reply_to_message.from_user.id
+        except AttributeError:
+            user = 0   # the user's original message is gone: let anyone open it
         if int(user) != 0 and query.from_user.id != int(user):
             return await query.answer(script.ALRT_TXT, show_alert=True)
-        await query.answer(url=f"https://t.me/{temp.U_NAME}?start=file_{query.message.chat.id}_{file_id}")          
+        print(f"FILE tap -> opening https://t.me/{temp.U_NAME}?start=file_{query.message.chat.id}_{file_id}")
+        await query.answer(url=f"https://t.me/{temp.U_NAME}?start=file_{query.message.chat.id}_{file_id}")
                             
     elif query.data.startswith("sendfiles"):
         clicked = query.from_user.id
@@ -1902,7 +1924,7 @@ async def auto_filter(client, msg, spoll=False):
     if not spoll:
         message = msg
         if message.text.startswith("/"): return
-        if re.findall("((^\/|^,|^!|^\.|^[\U0001F600-\U000E007F]).*)", message.text):
+        if re.findall(r"((^\/|^,|^!|^\.|^[\U0001F600-\U000E007F]).*)", message.text):
             return
         if len(message.text) < 100:
             search = message.text         
@@ -2183,4 +2205,4 @@ async def advantage_spell_chok(client, message):
     try:
         await message.delete()
     except:
-        pass  
+        pass
