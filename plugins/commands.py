@@ -14,6 +14,7 @@ from database.refer import referdb
 from database.topdb import silentdb
 from pyrogram.enums import ParseMode, ChatType
 from pyrogram import Client, filters, enums
+from pyrogram.errors import MessageIdInvalid, MessageNotModified
 from pyrogram.errors import FloodWait, ChatAdminRequired
 from pyrogram.types import *
 from database.ia_filterdb import *
@@ -33,6 +34,10 @@ async def start(client, message):
     # Wrapper: log crashes and tell the user, instead of staying silent.
     try:
         await _start_impl(client, message)
+    except (MessageIdInvalid, MessageNotModified):
+        # e.g. the "file will be deleted" notice was already removed by the
+        # user before the bot edited it. The file was already delivered.
+        pass
     except Exception as e:
         logger.exception(e)
         try:
