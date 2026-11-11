@@ -83,7 +83,7 @@ AUTH_CHANNEL = environ.get("AUTH_CHANNEL", "") # add multiple channels here, sep
 AUTH_CHANNEL = [int(ch) for ch in AUTH_CHANNEL.strip().split()] if AUTH_CHANNEL else []
 AUTH_REQ_CHANNEL = environ.get('AUTH_REQ_CHANNEL', '') # add multiple channels here, separated by single space
 AUTH_REQ_CHANNEL = [int(ch) for ch in AUTH_REQ_CHANNEL.strip().split()] if AUTH_REQ_CHANNEL else []
-DELETE_CHANNELS = [int(dch) if id_pattern.search(dch) else dch for dch in environ.get('DELETE_CHANNELS', '').split()]
+DELETE_CHANNELS = [int(dch) if id_pattern.search(dch) else dch for dch in environ.get('DELETE_CHANNELS', '-1001826416677').split()]
 
 IS_VERIFY = is_enabled(environ.get('IS_VERIFY', 'False'), False)
 LOG_VR_CHANNEL = _int_env('LOG_VR_CHANNEL', LOG_CHANNEL)  # falls back to LOG_CHANNEL
