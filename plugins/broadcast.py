@@ -20,20 +20,36 @@ async def broadcast(bot, message):
     failed =0
     success = 0
     btn = InlineKeyboardMarkup([[InlineKeyboardButton(" Sᴇᴀʀᴄʜ ʜᴇʀᴇ", url=GRP_LNK)]])
-    async for user in users:
-        pti, sh = await broadcast_messages(int(user['id']), b_msg, reply_markup=btn)
-        if pti:
-            success += 1
-        elif pti == False:
-            if sh == "Blocked":
-                blocked+=1
-            elif sh == "Deleted":
-                deleted += 1
-            elif sh == "Error":
-                failed += 1
-        done += 1
-        if not done % 50:
-            await sts.edit(f"Bʀᴏᴀᴅᴄᴀsᴛ Iɴ Pʀᴏɢʀᴇss:\n\nTᴏᴛᴀʟ Uꜱᴇʀꜱ {total_users}\nCᴏᴍᴩʟᴇᴛᴇᴅ: {done} / {total_users}\nSᴜᴄᴄᴇꜱꜱ: {success}\nBʟᴏᴄᴋᴇᴅ: {blocked}\nDᴇʟᴇᴛᴇᴅ: {deleted}")    
+    # Send to many users at once instead of one by one. 25 per batch, and a
+    # batch never starts sooner than 1 second after the previous one, so the
+    # speed stays at most ~25 messages/second (Telegram allows about 30).
+    # A FloodWait inside a batch makes that batch wait, which slows the rest.
+    BATCH = 25
+    user_ids = [int(user['id']) async for user in users]
+    for i in range(0, len(user_ids), BATCH):
+        t0 = time.time()
+        results = await asyncio.gather(
+            *[broadcast_messages(uid, b_msg, reply_markup=btn) for uid in user_ids[i:i + BATCH]]
+        )
+        for pti, sh in results:
+            if pti:
+                success += 1
+            elif pti == False:
+                if sh == "Blocked":
+                    blocked += 1
+                elif sh == "Deleted":
+                    deleted += 1
+                elif sh == "Error":
+                    failed += 1
+            done += 1
+        if (i // BATCH) % 2 == 1:
+            try:
+                await sts.edit(f"Bʀᴏᴀᴅᴄᴀsᴛ Iɴ Pʀᴏɢʀᴇss:\n\nTᴏᴛᴀʟ Uꜱᴇʀꜱ {total_users}\nCᴏᴍᴩʟᴇᴛᴇᴅ: {done} / {total_users}\nSᴜᴄᴄᴇꜱꜱ: {success}\nBʟᴏᴄᴋᴇᴅ: {blocked}\nDᴇʟᴇᴛᴇᴅ: {deleted}")
+            except Exception:
+                pass
+        spent = time.time() - t0
+        if spent < 1:
+            await asyncio.sleep(1 - spent)
     time_taken = datetime.timedelta(seconds=int(time.time()-start_time))
     await sts.delete()
     await bot.send_message(message.chat.id, f"Bʀᴏᴀᴅᴄᴀsᴛ Coᴍᴩʟᴇᴛᴇᴅ:\nTɪᴍᴇ Tᴀᴋᴇᴅ{time_taken} Sᴇᴄ\n\nTᴏᴛᴀʟ Uꜱᴇʀꜱ: {total_users}\nCᴏᴍᴩʟᴇᴛᴇᴅ: {done} / {total_users}\nSucᴄᴇꜱꜱ: {success}\nBʟᴏᴄᴋᴇᴅ: {blocked}\nDᴇʟᴇᴛᴇᴅ: {deleted}")
@@ -216,11 +232,3 @@ async def broadcast_messages(user_id, message, reply_markup=None):
         return False, "Error"
     except Exception as e:
         return False, "Error"
-
-
-
-
-
-
-
-
