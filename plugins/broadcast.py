@@ -20,10 +20,6 @@ async def broadcast(bot, message):
     failed =0
     success = 0
     btn = InlineKeyboardMarkup([[InlineKeyboardButton(" Sᴇᴀʀᴄʜ ʜᴇʀᴇ", url=GRP_LNK)]])
-    # Send to many users at once instead of one by one. 25 per batch, and a
-    # batch never starts sooner than 1 second after the previous one, so the
-    # speed stays at most ~25 messages/second (Telegram allows about 30).
-    # A FloodWait inside a batch makes that batch wait, which slows the rest.
     BATCH = 25
     user_ids = [int(user['id']) async for user in users]
     for i in range(0, len(user_ids), BATCH):
