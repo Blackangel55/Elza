@@ -1,3 +1,5 @@
+import os
+os.environ.setdefault("MOTOR_MAX_WORKERS", "64")
 import sys
 import glob
 import importlib
