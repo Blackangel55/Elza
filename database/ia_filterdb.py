@@ -139,6 +139,7 @@ class Media(Document):
             [('file_name', 1), ('file_type', 1)],
             [('caption', 1)],
             [('file_type', 1)],
+            [('added_on', -1)],
         )
         collection_name = COLLECTION_NAME
 
@@ -159,6 +160,7 @@ class Media2(Document):
             [('file_name', 1), ('file_type', 1)],
             [('caption', 1)],
             [('file_type', 1)],
+            [('added_on', -1)],
         )
         collection_name = COLLECTION_NAME
 
@@ -207,6 +209,7 @@ async def save_file(media):
             added_on=datetime.utcnow(),
         )
         await file.commit()
+        search_cache.clear()
     except DuplicateKeyError:
         LOGGER.error(f'{file_name} Is Already Saved In {"Secondary" if use_secondary else "Primary"} Database')
         return False, 0
@@ -214,6 +217,7 @@ async def save_file(media):
         LOGGER.error(f'Validation Error While Saving File: {e}')
         return False, 2
     else:
+        search_cache.clear()  
         LOGGER.info(f'{file_name} Saved Successfully In {"Secondary" if use_secondary else "Primary"} Database')
         return True, 1
 
@@ -232,8 +236,6 @@ async def backfill_added_on(batch_size=500):
             continue
         LOGGER.info(f"added_on backfill ({label}): stamping {missing} files...")
         try:
-            # Newest missing row ends up ~now; older rows go back one
-            # second each, so the timestamps keep the true insertion order.
             base = datetime.utcnow() - timedelta(seconds=missing)
             stamped = 0
             while True:
@@ -255,11 +257,17 @@ def _text_search_terms(query: str):
     return terms or None
 
 
+# Words that carry no meaning on their own in a title: filenames often
+# drop them ("Odyssey 2026" for "The Odyssey 2026"), so they must never
+# be required for a file to match.
 _TITLE_STOP_WORDS = {"the", "a", "an", "and", "or", "of", "to", "in", "is", "for", "on", "with", "by", "at", "from", "as"}
 _YEAR_RE = re.compile(r'(19|20)\d\d')
 
 
 def _split_terms(query: str):
+    """Split a query into: title words (2+ letters, for the text index),
+    years, and ordered words (every non-stop, non-year word incl. one-letter
+    ones like the "i m" of "i m game", used for the in-order file-name match)."""
     words = re.sub(r'[^A-Za-z0-9 ]+', ' ', query or '').split()
     years = [w for w in words if _YEAR_RE.fullmatch(w)]
     ordered = [w for w in words
@@ -267,6 +275,21 @@ def _split_terms(query: str):
                and not _YEAR_RE.fullmatch(w)]
     titles = [w for w in ordered if len(w) >= 2]
     return titles, years, ordered
+
+
+def _glued_variants(word):
+    """'visionquest' -> words a file name may split it into ('vision', 'quest', ...)."""
+    w = word.lower()
+    parts = set()
+    for i in range(3, len(w) - 2):
+        parts.add(w[:i])
+        parts.add(w[i:])
+    return sorted(parts)
+
+
+def _loose_pattern(word):
+    """Letters in order, with an optional space anywhere: matches VisionQuest and Vision Quest."""
+    return '[ ]?'.join(re.escape(c) for c in word)
 
 
 def _merge_newest(*lists, limit):
@@ -322,26 +345,26 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
     query_no_special = SPACES_PATTERN.sub(' ', query_no_special).strip()
     if query_no_special and query_no_special not in search_queries:
         search_queries.append(query_no_special)
-    text_terms = _text_search_terms(original_query)
-    if text_terms:
-        titles, years, ordered = _split_terms(original_query)
+    titles, years, ordered = _split_terms(original_query)
+    if ordered or years:
         sort_spec = [('added_on', -1)]   # newest first, always
-        attempts = []
 
-        def _with_type(f):
+        def _clause(rx):
+            if USE_CAPTION_FILTER:
+                return {'$or': [{'file_name': rx}, {'caption': rx}]}
+            return {'file_name': rx}
+
+        and_title = []
+        if ordered:
+            and_title = [_clause(re.compile('.*'.join(re.escape(t) for t in ordered), re.IGNORECASE))]
+        and_year = [_clause(re.compile(r'(?<!\d)' + y + r'(?!\d)')) for y in years]
+
+        attempts = [{'$and': and_title + and_year}]
+        if years and and_title:
+            attempts.append({'$and': and_title})
+        for attempt in attempts:
             if file_type:
-                f['file_type'] = file_type
-            return f
-
-        if titles:
-            title_text = ' '.join(titles)
-            title_res = [{'file_name': re.compile('.*'.join(re.escape(t) for t in ordered), re.IGNORECASE)}]
-            year_res = [{'file_name': re.compile(r'(?<!\d)' + y + r'(?!\d)')} for y in years]
-            attempts.append(_with_type({'$text': {'$search': title_text}, '$and': title_res + year_res}))
-            if years:
-                attempts.append(_with_type({'$text': {'$search': title_text}, '$and': title_res}))
-        else:
-            attempts.append(_with_type({'$text': {'$search': text_terms}}))
+                attempt['file_type'] = file_type
 
         for text_filter in attempts:
             try:
@@ -358,7 +381,7 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
                     total_results = await Media.count_documents(text_filter)
                     files = await Media.find(text_filter, projection).sort(sort_spec).skip(offset).limit(max_results).to_list(length=max_results)
                 if files:
-                    logger.info(f"✅ Found {len(files)} results with $text search: '{text_terms}'")
+                    logger.info(f"✅ Found {len(files)} of {total_results} results (newest first) for: '{original_query}'")
                     next_offset = offset + len(files)
                     if next_offset >= total_results:
                         next_offset = ''
@@ -366,8 +389,8 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
                     search_cache.set(cache_key, result)
                     return result
             except Exception as e:
-                logger.warning(f"$text search failed ({e}) - trying next")
-        logger.info(f"❌ No $text results for: '{text_terms}' - falling back to regex")
+                logger.warning(f"Ordered search failed ({e}) - trying next")
+        logger.info(f"❌ No ordered results for: '{original_query}' - falling back to old regex")
 
     files = []
     total_results = 0
