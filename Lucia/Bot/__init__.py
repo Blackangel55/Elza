@@ -1,6 +1,3 @@
-import asyncio
-import functools
-import inspect
 import logging
 import logging.config
 logging.config.fileConfig('logging.conf')
@@ -22,17 +19,6 @@ from pyrogram import types
 from aiohttp import web
 
 
-_BG_TASKS = set()
-
-
-def _log_task_error(task):
-    if task.cancelled():
-        return
-    exc = task.exception()
-    if exc is not None:
-        logging.getLogger("handler").error("Handler error: %r", exc, exc_info=exc)
-
-
 class SilentXBot(Client):
     def __init__(self):
         super().__init__(
@@ -44,22 +30,6 @@ class SilentXBot(Client):
             plugins={"root": "plugins"},
             sleep_threshold=5,
         )
-    def add_handler(self, handler, group: int = 0):
-        # Pyrogram awaits every handler inside one of `workers` slots. Handlers
-        # here sleep (auto-delete after DELETE_TIME, verification waits), so
-        # ~`workers` searches/files within that time used up every slot and the
-        # bot stopped answering anything. Run each async handler as its own
-        # background task instead, so slots are freed immediately.
-        callback = getattr(handler, "callback", None)
-        if callback is not None and inspect.iscoroutinefunction(callback):
-            @functools.wraps(callback)
-            async def _spawn(client, *args, **kwargs):
-                task = asyncio.create_task(callback(client, *args, **kwargs))
-                task.add_done_callback(_log_task_error)
-                _BG_TASKS.add(task)
-                task.add_done_callback(_BG_TASKS.discard)
-            handler.callback = _spawn
-        return super().add_handler(handler, group)
     async def iter_messages(
         self,
         chat_id: Union[int, str],
