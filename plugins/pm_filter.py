@@ -29,9 +29,6 @@ import tracemalloc
 
 logger = logging.getLogger(__name__)
 
-
-def _p(*a):
-    print(*a, flush=True)
 logger.setLevel(logging.ERROR)
 
 tracemalloc.start()
@@ -746,13 +743,11 @@ async def advantage_spoll_choker(bot, query):
                 
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
-    # Wrapper: prints every tap that reaches the bot, and shows any crash to
+    # Wrapper: logs crashes and shows them to
     # the user instead of leaving the button silent.
-    _p(f"CALLBACK tap: {str(query.data)[:40]}")
     try:
         await _cb_handler_impl(client, query)
     except Exception as e:
-        _p(f"CALLBACK ERROR on {str(query.data)[:40]}: {type(e).__name__}: {e}")
         logger.exception(e)
         try:
             await query.answer(f"Error: {type(e).__name__}: {str(e)[:120]}", show_alert=True)
@@ -780,7 +775,6 @@ async def _cb_handler_impl(client: Client, query: CallbackQuery):
             user = 0   # the user's original message is gone: let anyone open it
         if int(user) != 0 and query.from_user.id != int(user):
             return await query.answer(script.ALRT_TXT, show_alert=True)
-        _p(f"FILE tap -> opening https://t.me/{temp.U_NAME}?start=file_{query.message.chat.id}_{file_id}")
         await query.answer(url=f"https://t.me/{temp.U_NAME}?start=file_{query.message.chat.id}_{file_id}")
                             
     elif query.data.startswith("sendfiles"):
@@ -2209,4 +2203,4 @@ async def advantage_spell_chok(client, message):
     try:
         await message.delete()
     except:
-        pass  
+        pass
