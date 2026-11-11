@@ -127,6 +127,12 @@ async def next_page(bot, query):
         if not search:
             await query.answer(script.OLD_ALRT_TXT.format(query.from_user.first_name),show_alert=True)
             return
+        # Answer the tap now: a callback expires after a few seconds and the
+        # search below can take longer (QUERY_ID_INVALID otherwise).
+        try:
+            await query.answer()
+        except Exception:
+            pass
         files, n_offset, total = await get_search_results(query.message.chat.id, search, offset=offset, filter=True)
         try:
             n_offset = int(n_offset)
@@ -252,7 +258,6 @@ async def next_page(bot, query):
                 )
             except MessageNotModified:
                 pass
-        await query.answer()
     except Exception as e:
         print(f"Error In Next Funtion - {e}")
 
@@ -294,7 +299,14 @@ async def qualities_cb_handler(client: Client, query: CallbackQuery):
         req = query.from_user.id
         offset = 0
         btn.append([InlineKeyboardButton(text="↭ ʙᴀᴄᴋ ᴛᴏ ꜰɪʟᴇs ↭", callback_data=f"fq#homepage#{key}#{offset}")])
-        await query.edit_message_reply_markup(InlineKeyboardMarkup(btn))
+        try:
+            await query.edit_message_reply_markup(InlineKeyboardMarkup(btn))
+        except MessageNotModified:
+            pass  # quality menu already showing
+        try:
+            await query.answer()
+        except Exception:
+            pass
     except Exception as e:
         print(f"Error In Quality Callback Handler - {e}")
 
@@ -2002,4 +2014,4 @@ async def advantage_spell_chok(client, message):
     try:
         await message.delete()
     except:
-        pass  
+        pass
