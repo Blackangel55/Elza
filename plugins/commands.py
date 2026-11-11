@@ -25,20 +25,16 @@ logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 
-def _p(*a):
-    print(*a, flush=True)
-
 TIMEZONE = "Asia/Kolkata"
 BATCH_FILES = {}
 
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
-    # Wrapper: log every /start and show crashes instead of staying silent.
-    _p(f"START from {message.from_user.id if message.from_user else None}: {str(message.text)[:70]}")
+    # Wrapper: log crashes and tell the user, instead of staying silent.
     try:
         await _start_impl(client, message)
     except Exception as e:
-        _p(f"START ERROR: {type(e).__name__}: {e}")
+        logger.exception(e)
         try:
             await message.reply(f"Error: {type(e).__name__}: {str(e)[:150]}")
         except Exception:
@@ -168,7 +164,6 @@ async def _start_impl(client, message):
         return
             
     data = message.command[1]
-    _p('START step 1: payload read')
     try:
         pre, grp_id, file_id = data.split('_', 2)
     except:
@@ -212,7 +207,6 @@ async def _start_impl(client, message):
             if btn:
                 if message.command[1] != "subscribe":
                     btn.append([InlineKeyboardButton("♻️ ᴛʀʏ ᴀɢᴀɪɴ ♻️", url=f"https://t.me/{temp.U_NAME}?start={message.command[1]}")])
-                _p("START blocked: force-subscribe (user must join the channel)")
                 await client.send_photo(
                     chat_id=message.from_user.id,
                     photo=random.choice(FSUB_IMG),
@@ -225,7 +219,6 @@ async def _start_impl(client, message):
         await log_error(client, f"Got Error In Force Subscription Function.\n\n Error - {e}")
         print(f"Error In Fsub :- {e}")
         
-    _p('START step 2: force-sub check passed')
     user_id = m.from_user.id
     if not await db.has_premium_access(user_id):
         try:
@@ -256,7 +249,6 @@ async def _start_impl(client, message):
                     msg = script.THIRDT_VERIFICATION_TEXT
                 else:            
                     msg = script.SECOND_VERIFICATION_TEXT if is_second_shortener else script.VERIFICATION_TEXT
-                _p("START blocked: verification required (group/IS_VERIFY setting)")
                 n=await m.reply_text(
                     text=msg.format(message.from_user.mention),
                     protect_content = True,
@@ -272,7 +264,6 @@ async def _start_impl(client, message):
             print(f"Error In Verification - {e}")
             pass
     
-    _p("START step 3: verification check passed")
     if data.startswith("allfiles"):
         files = temp.GETALL.get(file_id)
         if not files:
@@ -320,18 +311,12 @@ async def _start_impl(client, message):
         return
 
     user = message.from_user.id
-    _p("START step 3b: looking up file in database")
-    import time as _time
-    _t0 = _time.perf_counter()
     try:
         files_ = await asyncio.wait_for(get_file_details(file_id), timeout=15)
     except asyncio.TimeoutError:
-        _p("START: database lookup timed out after 15s")
         return await message.reply("Database is slow right now. Please tap the file again in a moment.")
-    _p(f'START step 4: file found in database = {bool(files_)} ({_time.perf_counter()-_t0:.2f}s)')
     settings = await get_settings(int(grp_id))
     if not files_:
-        _p('START: file id not in database, trying fallback')
         pre, file_id = ((base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))).decode("ascii")).split("_", 1)
         try:
             if STREAM_MODE:
@@ -396,7 +381,6 @@ async def _start_impl(client, message):
         btn = [
             [InlineKeyboardButton('𝖴𝗉𝖽𝖺𝗍𝖾 𝖢𝗁𝖺𝗇𝗇𝖾𝗅', url=UPDATE_CHANNEL_LNK)]
         ]
-    _p(f"START sending file {file_id}")
     msg = await client.send_cached_media(
         chat_id=message.from_user.id,
         file_id=file_id,
