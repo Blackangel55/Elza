@@ -14,7 +14,7 @@ import pyrogram
 from info import *
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaPhoto, WebAppInfo
 from pyrogram import Client, filters, enums
-from pyrogram.errors import FloodWait, UserIsBlocked, MessageNotModified, PeerIdInvalid
+from pyrogram.errors import FloodWait, UserIsBlocked, MessageNotModified, PeerIdInvalid, MessageIdInvalid, QueryIdInvalid
 from utils import *
 from fuzzywuzzy import process
 from database.users_chats_db import db
@@ -747,6 +747,15 @@ async def cb_handler(client: Client, query: CallbackQuery):
     # the user instead of leaving the button silent.
     try:
         await _cb_handler_impl(client, query)
+    except (MessageNotModified, QueryIdInvalid):
+        # same content already shown / tap answered too late: nothing to tell
+        pass
+    except MessageIdInvalid:
+        # the result message was deleted (auto-delete) or is too old
+        try:
+            await query.answer("This result has expired. Please search again.", show_alert=True)
+        except Exception:
+            pass
     except Exception as e:
         logger.exception(e)
         try:
