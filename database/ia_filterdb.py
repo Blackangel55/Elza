@@ -130,6 +130,10 @@ class Media(Document):
     file_type = fields.StrField(allow_none=True)
     mime_type = fields.StrField(allow_none=True)
     caption = fields.StrField(allow_none=True)
+    # Written by the 2026 version into every file record. Without this field
+    # the old schema raises UnknownFieldInDBError whenever a record is loaded
+    # in full (file lookup), which looked like a hang.
+    added_on = fields.DateTimeField(allow_none=True)
     
     class Meta:
         indexes = (
@@ -149,6 +153,10 @@ class Media2(Document):
     file_type = fields.StrField(allow_none=True)
     mime_type = fields.StrField(allow_none=True)
     caption = fields.StrField(allow_none=True)
+    # Written by the 2026 version into every file record. Without this field
+    # the old schema raises UnknownFieldInDBError whenever a record is loaded
+    # in full (file lookup), which looked like a hang.
+    added_on = fields.DateTimeField(allow_none=True)
     
     class Meta:
         indexes = (
