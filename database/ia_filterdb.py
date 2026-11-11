@@ -255,17 +255,11 @@ def _text_search_terms(query: str):
     return terms or None
 
 
-# Words that carry no meaning on their own in a title: filenames often
-# drop them ("Odyssey 2026" for "The Odyssey 2026"), so they must never
-# be required for a file to match.
 _TITLE_STOP_WORDS = {"the", "a", "an", "and", "or", "of", "to", "in", "is", "for", "on", "with", "by", "at", "from", "as"}
 _YEAR_RE = re.compile(r'(19|20)\d\d')
 
 
 def _split_terms(query: str):
-    """Split a query into: title words (2+ letters, for the text index),
-    years, and ordered words (every non-stop, non-year word incl. one-letter
-    ones like the "i m" of "i m game", used for the in-order file-name match)."""
     words = re.sub(r'[^A-Za-z0-9 ]+', ' ', query or '').split()
     years = [w for w in words if _YEAR_RE.fullmatch(w)]
     ordered = [w for w in words
@@ -340,19 +334,13 @@ async def get_search_results(chat_id, query, file_type=None, max_results=10, off
             return f
 
         if titles:
-            # $text uses the index to find candidates by title words only.
-            # Every title word AND the year must then appear in the file name.
             title_text = ' '.join(titles)
-            # All words must appear IN ORDER (same as the old search), so
-            # "i m game" finds "I m Game" / "Im Game" and not every Game file.
             title_res = [{'file_name': re.compile('.*'.join(re.escape(t) for t in ordered), re.IGNORECASE)}]
             year_res = [{'file_name': re.compile(r'(?<!\d)' + y + r'(?!\d)')} for y in years]
             attempts.append(_with_type({'$text': {'$search': title_text}, '$and': title_res + year_res}))
             if years:
-                # No file with that year: show the title of any year, newest first.
                 attempts.append(_with_type({'$text': {'$search': title_text}, '$and': title_res}))
         else:
-            # Only a year or only stop words: plain text search, newest first.
             attempts.append(_with_type({'$text': {'$search': text_terms}}))
 
         for text_filter in attempts:
